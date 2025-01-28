@@ -7,12 +7,22 @@
 
 import UIKit
 
+enum WindowManager: String {
+    case biometricWindow, authorizationWindow
+}
+
+enum UserInfoKeys: String {
+    case state
+}
+
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(windowManager(notification:)), name: .windowManager, object: nil)
        
         guard let scene = (scene as? UIWindowScene) else { return }
         
@@ -20,6 +30,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = Builder.getBiometricAuthorizationView()
         window?.makeKeyAndVisible()
     }
+    
+    @objc
+    private func windowManager(notification: Notification) {
+            
+            guard let userInfo = notification.userInfo as? [String: Any] else { return }
+            
+            guard let state = userInfo[.state] as? WindowManager else {
+                return
+            }
+            
+            switch state {
+            case .biometricWindow:
+                window?.rootViewController = Builder.getBiometricAuthorizationView()
+            case .authorizationWindow:
+                window?.rootViewController = Builder.getAuthorizationView()
+            }
+            
+        }
+    
 
     func sceneDidDisconnect(_ scene: UIScene) {
         // Called as the scene is being released by the system.

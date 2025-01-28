@@ -17,5 +17,6 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.backgroundColor = .red
     }
 }

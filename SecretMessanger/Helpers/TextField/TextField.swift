@@ -21,15 +21,16 @@ class TextField: UITextField {
     }
     
     private func setupTextField() {
-        placeholder = fieldPlaceholder
+        //placeholder = fieldPlaceholder
+        attributedPlaceholder = NSAttributedString(string: fieldPlaceholder, attributes: [.foregroundColor: UIColor.gray])
         isSecureTextEntry = isPassword
         leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
         leftViewMode = .always
         rightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
         rightViewMode = .always
-        backgroundColor = .white
-        textColor = .black
-        layer.cornerRadius = 10
+        backgroundColor = .black
+        textColor = .white
+        layer.cornerRadius = 15
         autocapitalizationType = .none // Disabled field beginning with initial caps
     }
     

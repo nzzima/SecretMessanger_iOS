@@ -11,12 +11,14 @@ import UIKit
 
 class Button: UIButton {
     var buttonText: String
+    var buttonImage: UIImage?
     var completion: () -> Void
     var buttonColor: UIColor
     var titleColor: UIColor
     
-    init(buttonText: String, buttonColor: UIColor = .white, titleColor: UIColor = .black, completion: @escaping () -> Void) {
+    init(buttonText: String, buttonImage: UIImage, buttonColor: UIColor = .white, titleColor: UIColor = .black, completion: @escaping () -> Void) {
         self.buttonText = buttonText
+        self.buttonImage = buttonImage
         self.completion = completion
         self.buttonColor = buttonColor
         self.titleColor = titleColor
@@ -32,9 +34,10 @@ class Button: UIButton {
         }), for: .touchUpInside)
         
         translatesAutoresizingMaskIntoConstraints = false
-        titleLabel?.font = UIFont(name: "Copperplate", size: 16)
+        titleLabel?.font = UIFont(name: "Arial", size: 16)
         setTitle(buttonText, for: .normal)
         backgroundColor = buttonColor
+        setImage(buttonImage, for: .normal)
         setTitleColor(titleColor, for: .normal)
         
         layer.cornerRadius = 14

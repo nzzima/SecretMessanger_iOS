@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import LocalAuthentication
 
 protocol BiometricAuthorizationViewProtocol: AnyObject {
     
@@ -15,8 +16,76 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
     
     var presenter: BiometricAuthorizationViewPresenterProtocol!
     
+    let pageTitle: UILabel = {
+            $0.text = "Messenger is locked"
+            $0.textColor = .white
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.font = UIFont(name: "Arial", size: 36)
+            return $0
+        }(UILabel())
+    
+    private lazy var biometricAuthButton:UIButton = Button(buttonText: "Use Face ID",buttonImage: UIImage(systemName: "faceid") ?? UIImage(), buttonColor: .white, titleColor: .faceid) {
+            self.authButtonPressed()
+        }
+    
+    let faceIdImage: UIImageView = {
+        $0.image = UIImage(systemName: "faceid")
+        $0.tintColor = UIColor.faceid
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        return $0
+    }(UIImageView())
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .blue
+        view.backgroundColor = .bgMain
+        view.addSubviews(pageTitle, biometricAuthButton)
+        
+        setConstraints()
+    }
+    
+    private func setConstraints() {
+        NSLayoutConstraint.activate([
+            pageTitle.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
+            pageTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                
+            biometricAuthButton.topAnchor.constraint(equalTo: pageTitle.bottomAnchor, constant: 200),
+            biometricAuthButton.heightAnchor.constraint(equalToConstant: 40),
+            biometricAuthButton.widthAnchor.constraint(equalToConstant: 150),
+            biometricAuthButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+        ])
+    }
+    
+    private func authButtonPressed() {
+        let context = LAContext()
+        var error: NSError? = nil
+        
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+        
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Please authenticate with Face ID") { success, error in
+                DispatchQueue.main.async {
+                    guard success, error == nil else {
+                        self.showAlert(title: "Ошибка", message: "Попробуйте снова")
+                        print("Biometric authentication failed")
+                        print(error!.localizedDescription)
+                        return
+                    }
+                    NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.authorizationWindow])
+                    print("Biometric authentication success")
+                }
+            }
+        } else {
+            if let error {
+                showAlert(title: "Нет доступа", message:  "\(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+extension BiometricAuthorizationView {
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let dismissAction = UIAlertAction(title: "Отмена", style: .cancel)
+        alert.addAction(dismissAction)
+        present(alert, animated: true)
     }
 }

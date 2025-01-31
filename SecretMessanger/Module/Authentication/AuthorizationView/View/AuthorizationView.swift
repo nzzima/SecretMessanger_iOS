@@ -16,17 +16,17 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
     var presenter: AuthorizationViewPresenterProtocol!
     
     let pageTitle: UILabel = {
-        $0.text = "Authorization"
+        $0.text = "Авторизация"
         $0.textColor = .white
         $0.translatesAutoresizingMaskIntoConstraints = false
-        $0.font = UIFont(name: "Arial", size: 26)
+        $0.font = UIFont(name: "Copperplate", size: 26)
         return $0
     }(UILabel())
     
     private lazy var loginField:UITextField = TextField(fieldPlaceholder: "Логин")
     private lazy var passwordField:UITextField = TextField(fieldPlaceholder: "Пароль", isPassword: true)
     
-    private lazy var authorizationButton:UIButton = Button(buttonText: "Enter", buttonImage: UIImage()) { [weak self] in
+    private lazy var authorizationButton:UIButton = Button(buttonText: "Войти", buttonImage: UIImage()) { [weak self] in
         guard let self = self else { return }
             
         let userInfo = UserInfo(login: loginField.text ?? "", password: passwordField.text ?? "")

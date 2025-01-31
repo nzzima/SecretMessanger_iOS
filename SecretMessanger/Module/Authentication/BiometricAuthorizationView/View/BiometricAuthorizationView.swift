@@ -16,15 +16,23 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
     
     var presenter: BiometricAuthorizationViewPresenterProtocol!
     
-    let pageTitle: UILabel = {
-            $0.text = "Messenger is locked"
+    let pageTitle1: UILabel = {
+            $0.text = "Мессенджер"
             $0.textColor = .white
             $0.translatesAutoresizingMaskIntoConstraints = false
-            $0.font = UIFont(name: "Arial", size: 36)
+            $0.font = UIFont(name: "Copperplate", size: 36)
             return $0
         }(UILabel())
     
-    private lazy var biometricAuthButton:UIButton = Button(buttonText: "Use Face ID",buttonImage: UIImage(systemName: "faceid") ?? UIImage(), buttonColor: .white, titleColor: .faceid) {
+    let pageTitle2: UILabel = {
+            $0.text = "заблокирован"
+            $0.textColor = .white
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.font = UIFont(name: "Copperplate", size: 36)
+            return $0
+        }(UILabel())
+    
+    private lazy var biometricAuthButton:UIButton = Button(buttonText: " Face ID",buttonImage: UIImage(systemName: "faceid") ?? UIImage(), buttonColor: .white, titleColor: .faceid) {
             self.authButtonPressed()
         }
     
@@ -38,17 +46,20 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .bgMain
-        view.addSubviews(pageTitle, biometricAuthButton)
+        view.addSubviews(pageTitle1, pageTitle2, biometricAuthButton)
         
         setConstraints()
     }
     
     private func setConstraints() {
         NSLayoutConstraint.activate([
-            pageTitle.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
-            pageTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            pageTitle1.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
+            pageTitle1.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            
+            pageTitle2.topAnchor.constraint(equalTo: pageTitle1.bottomAnchor, constant: 0),
+            pageTitle2.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 
-            biometricAuthButton.topAnchor.constraint(equalTo: pageTitle.bottomAnchor, constant: 200),
+            biometricAuthButton.topAnchor.constraint(equalTo: pageTitle1.bottomAnchor, constant: 200),
             biometricAuthButton.heightAnchor.constraint(equalToConstant: 40),
             biometricAuthButton.widthAnchor.constraint(equalToConstant: 150),
             biometricAuthButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)

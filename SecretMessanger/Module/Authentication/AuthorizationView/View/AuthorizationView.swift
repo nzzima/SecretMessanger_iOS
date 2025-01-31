@@ -30,7 +30,9 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         guard let self = self else { return }
             
         let userInfo = UserInfo(login: loginField.text ?? "", password: passwordField.text ?? "")
-            
+        
+        NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.appWindow])
+        
         print("Authorization: \(userInfo.login) \(userInfo.password)")
             //presenter.signIn(userInfo: userInfo)
         }

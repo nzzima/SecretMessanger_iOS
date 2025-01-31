@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 protocol TabBarViewPresenterProtocol: AnyObject {
     
@@ -21,19 +22,22 @@ class TabBarViewPresenter: TabBarViewPresenterProtocol {
     }
     
     private func setupControllers() {
-//            let messageList = Builder.getMessageListView()
-//            messageList.title = "Messages"
-//            messageList.tabBarItem.image = UIImage(systemName: "rectangle.3.group.bubble")
-//            
-//            let userList = Builder.getUserListView()
-//            userList.title = "Users"
-//            userList.tabBarItem.image = UIImage(systemName: "person.3")
-//            
-//            let profile = Builder.getProfileView()
-//            profile.title = "Profile"
-//            profile.tabBarItem.image = UIImage(systemName: "person")
-//            
-//            view?.setControllers(views: [userList, messageList, profile])
+        let messageList = Builder.getMessageListView()
+        messageList.title = "Чаты"
+        messageList.tabBarItem.image = UIImage(systemName: "ellipsis.message")
+        messageList.tabBarItem.selectedImage = UIImage(systemName: "ellipsis.message.fill")
+            
+        let userList = Builder.getUserListView()
+        userList.title = "Контакты"
+        userList.tabBarItem.image = UIImage(systemName: "person.circle")
+        userList.tabBarItem.selectedImage = UIImage(systemName: "person.circle.fill")
+            
+        let profile = Builder.getProfileView()
+        profile.title = "Профиль"
+        profile.tabBarItem.image = UIImage(systemName: "person")
+        profile.tabBarItem.selectedImage = UIImage(systemName: "person.fill")
+            
+        view?.setControllers(views: [userList, messageList, profile])
             
         }
 }

@@ -6,3 +6,16 @@
 //
 
 import Foundation
+
+protocol UserListViewPresenterProtocol: AnyObject {
+    
+}
+
+class UserListViewPresenter: UserListViewPresenterProtocol {
+    
+    weak var view: UserListViewProtocol?
+    
+    required init(view: any UserListViewProtocol) {
+        self.view = view
+    }
+}

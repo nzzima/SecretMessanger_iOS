@@ -7,6 +7,7 @@
 
 import UIKit
 import LocalAuthentication
+import Firebase
 
 protocol BiometricAuthorizationViewProtocol: AnyObject {
     
@@ -70,7 +71,7 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
         let context = LAContext()
         var error: NSError? = nil
         
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+        if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
         
             context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Please authenticate with Face ID") { success, error in
                 DispatchQueue.main.async {
@@ -80,7 +81,11 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
                         print(error!.localizedDescription)
                         return
                     }
+                    
+                    FirebaseManager.shared.isLogin() ?
+                    NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.appWindow]) :
                     NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.authorizationWindow])
+                    
                     print("Biometric authentication success")
                 }
             }

@@ -23,18 +23,16 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         return $0
     }(UILabel())
     
-    private lazy var loginField:UITextField = TextField(fieldPlaceholder: "Логин")
+    private lazy var emailField:UITextField = TextField(fieldPlaceholder: "Email")
     private lazy var passwordField:UITextField = TextField(fieldPlaceholder: "Пароль", isPassword: true)
     
     private lazy var authorizationButton:UIButton = Button(buttonText: "Войти", buttonImage: UIImage()) { [weak self] in
         guard let self = self else { return }
             
-        let userInfo = UserInfo(login: loginField.text ?? "", password: passwordField.text ?? "")
+        let userInfo = UserInfo(email: emailField.text ?? "", password: passwordField.text ?? "")
         
-        NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.appWindow])
-        
-        print("Authorization: \(userInfo.login) \(userInfo.password)")
-            //presenter.signIn(userInfo: userInfo)
+        print("Authorization: \(userInfo.email) \(userInfo.password)")
+        presenter.signIn(userInfo: userInfo)
         }
     
     override func viewDidLoad() {
@@ -42,7 +40,7 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         view.backgroundColor = .bgMain
         self.hideKeyboardWhenTappedAround()
         
-        view.addSubviews(pageTitle, loginField, passwordField, authorizationButton)
+        view.addSubviews(pageTitle, emailField, passwordField, authorizationButton)
         
         setConstraints()
     }
@@ -51,17 +49,17 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         NSLayoutConstraint.activate([
             pageTitle.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
             pageTitle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                
-            loginField.heightAnchor.constraint(equalToConstant: 50),
-            loginField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
-            loginField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
-            loginField.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -30),
             
+            emailField.heightAnchor.constraint(equalToConstant: 50),
+            emailField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            emailField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            emailField.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -30),
+            
+            passwordField.topAnchor.constraint(equalTo: emailField.bottomAnchor, constant: 20),
             passwordField.heightAnchor.constraint(equalToConstant: 50),
             passwordField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
             passwordField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
-            passwordField.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 30),
-            
+
             authorizationButton.topAnchor.constraint(equalTo: passwordField.bottomAnchor, constant: 50),
             authorizationButton.heightAnchor.constraint(equalToConstant: 40),
             authorizationButton.widthAnchor.constraint(equalToConstant: 150),

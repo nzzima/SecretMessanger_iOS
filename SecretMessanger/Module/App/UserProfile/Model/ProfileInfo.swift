@@ -6,3 +6,10 @@
 //
 
 import Foundation
+
+struct ProfileInfo {
+    var login: String
+    var email: String
+    var name: String
+    var someInfo: String?
+}

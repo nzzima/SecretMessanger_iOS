@@ -62,4 +62,13 @@ class Builder {
         return UINavigationController(rootViewController: view)
     }
     
+    static func getUserProfileView() -> UIViewController {
+        let view = UserProfileView()
+        let presenter = UserProfileViewPresenter(view: view)
+        
+        view.presenter = presenter
+        
+        return view
+    }
+    
 }

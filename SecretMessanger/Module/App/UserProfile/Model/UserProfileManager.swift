@@ -6,3 +6,9 @@
 //
 
 import Foundation
+import Firebase
+import FirebaseFirestore
+
+class UserProfileManager {
+    
+}

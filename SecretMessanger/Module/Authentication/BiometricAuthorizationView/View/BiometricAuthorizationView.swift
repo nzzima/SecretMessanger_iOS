@@ -73,7 +73,7 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
         
         if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
         
-            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Please authenticate with Face ID") { success, error in
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Please authenticate with Face ID") { success, error in
                 DispatchQueue.main.async {
                     guard success, error == nil else {
                         self.showAlert(title: "Ошибка", message: "Попробуйте снова")

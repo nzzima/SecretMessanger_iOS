@@ -27,8 +27,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let scene = (scene as? UIWindowScene) else { return }
         
         self.window = UIWindow(windowScene: scene)
-        window?.rootViewController = Builder.getBiometricAuthorizationView()
-        //window?.rootViewController = Builder.getUserListView()
+        //window?.rootViewController = Builder.getBiometricAuthorizationView()
+        window?.rootViewController = Builder.getProfileView()
         window?.makeKeyAndVisible()
     }
     

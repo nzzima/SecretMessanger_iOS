@@ -49,7 +49,7 @@ class UserListView: UIViewController, UserListViewProtocol {
 
 extension UserListView: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
+        //guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
         
         let profile = Builder.getUserProfileView()
         navigationController?.pushViewController(profile, animated: true)

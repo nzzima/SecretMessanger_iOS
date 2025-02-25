@@ -20,3 +20,15 @@ struct ActiveUser {
         self.someInfo = userInfo["someInfo"] as? String ?? ""
     }
 }
+
+extension ActiveUser {
+    subscript(key: String) -> String? {
+        switch key {
+            case "id": return id
+            case "login": return login
+            case "name": return name
+            case "someInfo": return someInfo
+            default: return nil
+        }
+    }
+}

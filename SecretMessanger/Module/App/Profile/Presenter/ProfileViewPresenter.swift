@@ -8,7 +8,7 @@
 import Foundation
 
 protocol ProfileViewPresenterProtocol: AnyObject {
-    var activeUser: [ActiveUser] {get set}
+    var activeUser: [String] {get set}
 }
 
 class ProfileViewPresenter: ProfileViewPresenterProtocol {
@@ -16,7 +16,7 @@ class ProfileViewPresenter: ProfileViewPresenterProtocol {
     
     private let profileManager = ProfileManager()
     
-    var activeUser : [ActiveUser] = []
+    var activeUser : [String] = []
     
     required init(view: any ProfileViewProtocol) {
         self.view = view

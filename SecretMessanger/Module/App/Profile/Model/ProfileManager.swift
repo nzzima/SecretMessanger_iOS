@@ -13,7 +13,7 @@ class ProfileManager {
     private let ref = Firestore.firestore()
     //private var lastDoc: DocumentSnapshot?
         
-    func getActiveUser(completion: @escaping ([ActiveUser]) -> Void) {
+    func getActiveUser(completion: @escaping ([String]) -> Void) {
         ref
             .collection(.users)
             
@@ -22,12 +22,15 @@ class ProfileManager {
                 guard err == nil else { return }
                 guard let docs = snap?.documents else { return }
                 
-                var activeUser: [ActiveUser] = []
+                var activeUser: [String] = []
                 docs.forEach { user in
                     let userData = user.data()
                     if FirebaseManager.shared.getUser()?.uid == user.documentID {
                         let user = ActiveUser(id: user.documentID, userInfo: userData)
-                        activeUser.append(user)
+                        activeUser.append(user.id)
+                        activeUser.append(user.login)
+                        activeUser.append(user.name)
+                        activeUser.append(user.someInfo)
                     }
                 }
                 completion(activeUser)

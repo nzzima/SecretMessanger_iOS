@@ -18,6 +18,8 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     
     let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
     
+    let titleInfoCell = ["Идентификатор", "Логин", "Имя", "Заметка"]
+    
     lazy var imageView: UIImageView = {
         $0.image = UIImage(named: "basicUserImage")
         $0.contentMode = .scaleAspectFill
@@ -32,6 +34,7 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         $0.dataSource = self
         $0.backgroundColor = .bgMain
         $0.delegate = self
+        $0.tintColor = .white
         $0.separatorColor = .darkGray
         $0.alwaysBounceVertical = false
         return $0
@@ -76,23 +79,23 @@ extension ProfileView: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        
         cell.backgroundColor = .black
         cell.selectionStyle = .none
         
-        //TODO: Изменить цвет текста в ячейке с черного(стандарт) на белый
-        
-        let tableItem = presenter.activeUser[indexPath.row]
         var config = cell.defaultContentConfiguration()
-        config.text = tableItem.id
+        
+        config.text = titleInfoCell[indexPath.item]
+        config.secondaryText = presenter.activeUser[indexPath.item]
+        config.secondaryTextProperties.color = .white
+        config.secondaryTextProperties.font = .systemFont(ofSize: 18)
+        config.textProperties.color = .gray
+        config.textProperties.font = .systemFont(ofSize: 14)
         
         cell.contentConfiguration = config
         
         return cell
     }
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        60
-    }
-    
 }
 
 extension ProfileView: UITableViewDelegate {

@@ -71,4 +71,13 @@ class Builder {
         return view
     }
     
+    static func getEditProfileView() -> UIViewController {
+        let view = EditProfileView()
+        let presenter = EditProfileViewPresenter(view: view)
+        
+        view.presenter = presenter
+        
+        return view
+    }
+    
 }

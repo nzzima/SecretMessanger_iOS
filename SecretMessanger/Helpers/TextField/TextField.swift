@@ -23,6 +23,7 @@ class TextField: UITextField {
     private func setupTextField() {
         //placeholder = fieldPlaceholder
         attributedPlaceholder = NSAttributedString(string: fieldPlaceholder, attributes: [.foregroundColor: UIColor.gray])
+        
         isSecureTextEntry = isPassword
         leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
         leftViewMode = .always

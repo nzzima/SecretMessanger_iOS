@@ -32,7 +32,7 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     }(UIImageView())
     
     lazy var rigthBarButton: UIButton = {
-        $0.setImage(UIImage(systemName: "square.and.arrow.up"), for: .normal)
+        $0.setImage(UIImage(systemName: "square.and.pencil"), for: .normal)
         $0.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
         $0.imageView?.contentMode = .scaleAspectFit
         $0.addTarget(self, action: #selector(goToEditProfile(_:)), for: .touchUpInside)

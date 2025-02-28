@@ -27,6 +27,18 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         return $0
     }(UIImageView())
     
+    let nameLabel: UILabel = {
+        $0.text = "Имя"
+        $0.textColor = .lightGray
+        return $0
+    }(UILabel())
+    
+    let someInfoLabel: UILabel = {
+        $0.text = "Заметка"
+        $0.textColor = .lightGray
+        return $0
+    }(UILabel())
+    
     lazy var editAvatar: UIButton = {
         $0.setTitle("Изменить аватар", for: .normal)
         $0.setTitleColor(.faceid, for: .normal)
@@ -34,24 +46,43 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         return $0
     }(UIButton())
     
-    private lazy var nameField: UITextField = TextField(fieldPlaceholder: "Name")
+    lazy var rigthBarButton: UIButton = {
+        $0.setTitle("Сохранить", for: .normal)
+        $0.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+        //$0.imageView?.contentMode = .scaleAspectFit
+        $0.addTarget(self, action: #selector(saveChanges(_:)), for: .touchUpInside)
+        return $0
+    }(UIButton())
+    
+    private lazy var nameField: UITextField = TextField(fieldPlaceholder: "Введите новое имя")
+    private lazy var someInfoField: UITextField = TextField(fieldPlaceholder: "Введите новую заметку")
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .bgMain
         navigationItem.title = "Редактирование"
-        view.addSubviews(imageView, editAvatar, nameField)
-        
+        let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
+        navigationItem.rightBarButtonItem = itemRightBar
+        view.addSubviews(imageView, editAvatar, nameField, nameLabel, someInfoField, someInfoLabel)
+
+        self.hideKeyboardWhenTappedAround()
         setConstraints()
     }
     
     @objc func tappedEditAvatar() {
-        print("Tapped edit avatar")
+        presentPhotoActionSheet()
+    }
+    
+    @objc func saveChanges(_ sender: UIBarButtonItem) {
+        print("Save changes")
     }
     
     private func setConstraints() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         editAvatar.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        someInfoField.translatesAutoresizingMaskIntoConstraints = false
+        someInfoLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -63,10 +94,77 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
             editAvatar.heightAnchor.constraint(equalToConstant: 40),
             editAvatar.widthAnchor.constraint(equalToConstant: 150),
             
+            nameLabel.bottomAnchor.constraint(equalTo: nameField.topAnchor, constant: -5),
+            nameLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
             nameField.topAnchor.constraint(equalTo: editAvatar.bottomAnchor, constant: 40),
             nameField.heightAnchor.constraint(equalToConstant: 40),
-            nameField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            nameField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             nameField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            someInfoLabel.bottomAnchor.constraint(equalTo: someInfoField.topAnchor, constant: -5),
+            someInfoLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            someInfoLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            someInfoLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            someInfoField.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 40),
+            someInfoField.heightAnchor.constraint(equalToConstant: 40),
+            someInfoField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            someInfoField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30)
+            
         ])
+    }
+}
+
+extension EditProfileView: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    
+    func presentPhotoActionSheet() {
+        let actionSheet = UIAlertController(title: "Аватар профиля", message: "", preferredStyle: .actionSheet)
+        actionSheet.addAction(UIAlertAction(title: "Отмена",
+                                            style: .cancel,
+                                            handler: nil))
+        actionSheet.addAction(UIAlertAction(title: "Сделать фото",
+                                            style: .default,
+                                            handler: { [weak self] _ in
+            self?.presentCamera()
+        }))
+        actionSheet.addAction(UIAlertAction(title: "Выбрать фото",
+                                            style: .default,
+                                            handler: { [weak self] _ in
+            self?.presentPhotoPicker()
+        }))
+        
+        present(actionSheet, animated: true)
+    }
+    
+    func presentCamera() {
+        let vc = UIImagePickerController()
+        vc.delegate = self
+        vc.sourceType = .camera
+        vc.allowsEditing = true
+        present(vc, animated: true)
+    }
+    
+    func presentPhotoPicker() {
+        let vc = UIImagePickerController()
+        vc.delegate = self
+        vc.sourceType = .photoLibrary
+        vc.allowsEditing = true
+        present(vc, animated: true)
+    }
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true, completion: nil)
+    }
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true, completion: nil)
+        
+        guard let selectedImage = info[UIImagePickerController.InfoKey.editedImage] as? UIImage else { return }
+        print(info)
+        
+        self.imageView.image = selectedImage
     }
 }

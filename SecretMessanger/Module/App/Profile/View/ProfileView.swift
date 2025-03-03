@@ -62,6 +62,14 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         setConstraints()
     }
     
+    override func viewWillAppear(_ animated: Bool) { // Hide tabBar
+        hidesBottomBarWhenPushed = true
+    }
+        
+    override func viewDidDisappear(_ animated: Bool) { // Show tabBar
+        hidesBottomBarWhenPushed = false
+    }
+    
     @objc func goToEditProfile(_ sender: UIBarButtonItem) {
         let editProfileVC = Builder.getEditProfileView()
         navigationController?.pushViewController(editProfileVC, animated: true)

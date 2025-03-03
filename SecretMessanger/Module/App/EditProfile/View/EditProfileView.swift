@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FirebaseFirestore
 import UIKit
 
 protocol EditProfileViewProtocol: AnyObject {
@@ -46,6 +47,13 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         return $0
     }(UIButton())
     
+    lazy var exitAccount: UIButton = {
+        $0.setTitle("Выйти", for: .normal)
+        $0.setTitleColor(.red, for: .normal)
+        $0.addTarget(self, action: #selector(tappedExitAccount), for: .touchUpInside)
+        return $0
+    }(UIButton())
+    
     lazy var rigthBarButton: UIButton = {
         $0.setTitle("Сохранить", for: .normal)
         $0.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
@@ -63,7 +71,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         navigationItem.title = "Редактирование"
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
-        view.addSubviews(imageView, editAvatar, nameField, nameLabel, someInfoField, someInfoLabel)
+        view.addSubviews(imageView, editAvatar, nameField, nameLabel, someInfoField, someInfoLabel, exitAccount)
 
         self.hideKeyboardWhenTappedAround()
         setConstraints()
@@ -71,6 +79,11 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     
     @objc func tappedEditAvatar() {
         presentPhotoActionSheet()
+    }
+    
+    @objc func tappedExitAccount() {
+        presentExitActionSheet()
+        print("Exit account")
     }
     
     @objc func saveChanges(_ sender: UIBarButtonItem) {
@@ -83,6 +96,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         someInfoField.translatesAutoresizingMaskIntoConstraints = false
         someInfoLabel.translatesAutoresizingMaskIntoConstraints = false
+        exitAccount.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -112,13 +126,32 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
             someInfoField.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 40),
             someInfoField.heightAnchor.constraint(equalToConstant: 40),
             someInfoField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            someInfoField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30)
+            someInfoField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            exitAccount.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -30),
+            exitAccount.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            exitAccount.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            exitAccount.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30)
             
         ])
     }
 }
 
 extension EditProfileView: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    
+    func presentExitActionSheet() {
+        let actionSheet = UIAlertController(title: "Вы действительно хотите выйти?", message: "", preferredStyle: .actionSheet)
+        actionSheet.addAction(UIAlertAction(title: "Отмена",
+                                            style: .cancel,
+                                            handler: nil))
+        actionSheet.addAction(UIAlertAction(title: "Выйти из аккаунта",
+                                            style: .default,
+                                            handler: { [weak self] _ in
+            self?.presentExit()
+        }))
+        
+        present(actionSheet, animated: true)
+    }
     
     func presentPhotoActionSheet() {
         let actionSheet = UIAlertController(title: "Аватар профиля", message: "", preferredStyle: .actionSheet)
@@ -153,6 +186,10 @@ extension EditProfileView: UIImagePickerControllerDelegate, UINavigationControll
         vc.sourceType = .photoLibrary
         vc.allowsEditing = true
         present(vc, animated: true)
+    }
+    
+    func presentExit() {
+        FirebaseManager.shared.signOut()
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {

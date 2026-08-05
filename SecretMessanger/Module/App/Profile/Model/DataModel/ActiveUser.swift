@@ -14,10 +14,13 @@ struct ActiveUser {
     var someInfo: String
     
     init(id: String, userInfo: [String: Any]) {
+        let name = userInfo["name"] as? String ?? ""
+        let login = userInfo["login"] as? String ?? ""
+
         self.id = id
-        self.login = userInfo["login"] as? String ?? ""
-        self.name = userInfo["name"] as? String ?? ""
+        self.name = name
         self.someInfo = userInfo["someInfo"] as? String ?? ""
+        self.login = login.isEmpty ? name : login
     }
 }
 

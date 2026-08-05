@@ -10,9 +10,12 @@ import Foundation
 struct ChatUser {
     var id: String
     var login: String
-    
+
     init(id: String, userInfo: [String: Any]) {
         self.id = id
-        self.login = userInfo["login"] as? String ?? ""
+
+        let login = userInfo["login"] as? String ?? ""
+        let name = userInfo["name"] as? String ?? ""
+        self.login = login.isEmpty ? name : login
     }
 }

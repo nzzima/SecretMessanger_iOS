@@ -8,10 +8,14 @@
 import UIKit
 
 protocol AuthorizationViewProtocol: AnyObject {
-    
+    func showError(_ message: String)
 }
 
 class AuthorizationView: UIViewController, AuthorizationViewProtocol {
+
+    func showError(_ message: String) {
+        showErrorAlert(message)
+    }
     
     var presenter: AuthorizationViewPresenterProtocol!
     
@@ -30,8 +34,7 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         guard let self = self else { return }
             
         let userInfo = UserInfo(email: emailField.text ?? "", password: passwordField.text ?? "")
-        
-        print("Authorization: \(userInfo.email) \(userInfo.password)")
+
         presenter.signIn(userInfo: userInfo)
         }
     

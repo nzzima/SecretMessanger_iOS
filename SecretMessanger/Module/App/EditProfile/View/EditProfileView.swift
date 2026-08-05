@@ -83,7 +83,6 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     
     @objc func tappedExitAccount() {
         presentExitActionSheet()
-        print("Exit account")
     }
     
     @objc func saveChanges(_ sender: UIBarButtonItem) {

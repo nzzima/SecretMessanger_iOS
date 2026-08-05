@@ -62,11 +62,11 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         setConstraints()
     }
     
-    override func viewWillAppear(_ animated: Bool) { // Hide tabBar
+    override func viewWillAppear(_ animated: Bool) {
         hidesBottomBarWhenPushed = true
     }
         
-    override func viewDidDisappear(_ animated: Bool) { // Show tabBar
+    override func viewDidDisappear(_ animated: Bool) {
         hidesBottomBarWhenPushed = false
     }
     

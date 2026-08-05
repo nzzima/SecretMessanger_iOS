@@ -16,8 +16,6 @@ protocol UserListViewProtocol: AnyObject {
 class UserListView: UIViewController, UserListViewProtocol {
     var presenter: UserListViewPresenterProtocol!
     
-    lazy var signOutButton: UIBarButtonItem = UIBarButtonItem(image: .actions, style: .done, target: self, action: #selector(signOut))
-    
     let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
     
     lazy var tableView: UITableView = {
@@ -29,17 +27,26 @@ class UserListView: UIViewController, UserListViewProtocol {
         return $0
     }(UITableView(frame: view.bounds))
     
+    lazy var rigthBarButton: UIButton = {
+        $0.setImage(UIImage(systemName: "rectangle.and.pencil.and.ellipsis"), for: .normal)
+        $0.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+        $0.imageView?.contentMode = .scaleAspectFit
+        $0.addTarget(self, action: #selector(searchButton), for: .touchUpInside)
+        return $0
+    }(UIButton())
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .bgMain
         navigationItem.title = "Контакты"
         navigationController?.navigationBar.titleTextAttributes = textAttributes
-        navigationItem.rightBarButtonItem = signOutButton
-        view.addSubview(tableView)
+        let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
+        navigationItem.rightBarButtonItem = itemRightBar
+        view.addSubviews(tableView)
     }
     
-    @objc func signOut() {
-        FirebaseManager.shared.signOut()
+    @objc func searchButton() {
+        print("Start search")
     }
     
     func reloadTable() {
@@ -49,10 +56,8 @@ class UserListView: UIViewController, UserListViewProtocol {
 
 extension UserListView: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        //guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
-        
-        let profile = Builder.getUserProfileView()
-        navigationController?.pushViewController(profile, animated: true)
+        let messanger = Builder.getMessangerView(chatUser: presenter.users[indexPath.row])
+        navigationController?.pushViewController(messanger, animated: true)
    }
 }
 

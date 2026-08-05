@@ -44,6 +44,15 @@ class Builder {
         return UINavigationController(rootViewController: view)
     }
     
+    static func getMessangerView(chatUser: ChatUser) -> UIViewController {
+        let view = MessangerView()
+        let presenter = MessangerViewPresenter(view: view, chatUser: chatUser)
+
+        view.presenter = presenter
+
+        return view
+    }
+
     static func getMessageListView() -> UIViewController {
         let view = MessageListView()
         let presenter = MessageListViewPresenter(view: view)

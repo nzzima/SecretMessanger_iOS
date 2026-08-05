@@ -9,20 +9,131 @@ import Foundation
 import UIKit
 
 protocol UserProfileViewProtocol: AnyObject {
-    
+    func reloadProfile()
+    func showError(_ message: String)
 }
 
 class UserProfileView: UIViewController, UserProfileViewProtocol {
-    
+
     var presenter: UserProfileViewPresenterProtocol!
-    
+
     let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-    
+
+    //MARK: Только публичные поля. Почта и идентификатор сюда не выносятся —
+    // см. комментарий в ProfileInfo.
+    private var rows: [(title: String, value: String)] {
+        guard let profile = presenter.profile else { return [] }
+
+        return [
+            ("Логин", profile.login),
+            ("Имя", profile.name),
+            ("Заметка", profile.someInfo)
+        ]
+    }
+
+    lazy var imageView: UIImageView = {
+        $0.image = UIImage(named: "basicUserImage")
+        $0.contentMode = .scaleAspectFill
+        $0.layer.borderWidth = 4
+        $0.layer.borderColor = UIColor.gray.cgColor
+        $0.clipsToBounds = true
+        $0.layer.masksToBounds = true
+        $0.layer.cornerRadius = 50
+        return $0
+    }(UIImageView())
+
+    lazy var rigthBarButton: UIButton = {
+        $0.setImage(UIImage(systemName: "message"), for: .normal)
+        $0.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+        $0.imageView?.contentMode = .scaleAspectFit
+        $0.addTarget(self, action: #selector(goToMessanger(_:)), for: .touchUpInside)
+        return $0
+    }(UIButton())
+
+    lazy var tableView: UITableView = {
+        $0.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        $0.dataSource = self
+        $0.delegate = self
+        $0.backgroundColor = .bgMain
+        $0.tintColor = .white
+        $0.separatorColor = .darkGray
+        $0.alwaysBounceVertical = false
+        return $0
+    }(UITableView(frame: view.bounds, style: .insetGrouped))
+
     override func viewDidLoad() {
         super.viewDidLoad()
+
         view.backgroundColor = .bgMain
-        navigationItem.title = "User login"
+        navigationItem.title = presenter.title
         navigationController?.navigationBar.titleTextAttributes = textAttributes
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: rigthBarButton)
+
+        view.addSubviews(imageView, tableView)
+
+        setConstraints()
     }
-    
+
+    @objc func goToMessanger(_ sender: UIButton) {
+        let messanger = Builder.getMessangerView(chatUser: presenter.chatUser)
+        navigationController?.pushViewController(messanger, animated: true)
+    }
+
+    func reloadProfile() {
+        navigationItem.title = presenter.title
+        tableView.reloadData()
+    }
+
+    func showError(_ message: String) {
+        showErrorAlert(message)
+    }
+
+    private func setConstraints() {
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
+            imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 120),
+            imageView.heightAnchor.constraint(equalToConstant: 120),
+
+            tableView.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 30),
+            tableView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            tableView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
+            tableView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.5)
+        ])
+    }
+}
+
+extension UserProfileView: UITableViewDataSource {
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        rows.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let row = rows[indexPath.item]
+
+        cell.backgroundColor = .black
+        cell.selectionStyle = .none
+
+        var config = cell.defaultContentConfiguration()
+
+        config.text = row.title
+        config.secondaryText = row.value
+        config.secondaryTextProperties.color = .white
+        config.secondaryTextProperties.font = .systemFont(ofSize: 18)
+        config.textProperties.color = .gray
+        config.textProperties.font = .systemFont(ofSize: 14)
+
+        cell.contentConfiguration = config
+
+        return cell
+    }
+}
+
+extension UserProfileView: UITableViewDelegate {
+
 }

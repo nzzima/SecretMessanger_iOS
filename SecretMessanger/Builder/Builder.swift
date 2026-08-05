@@ -80,12 +80,12 @@ class Builder {
         return view
     }
     
-    static func getUserProfileView() -> UIViewController {
+    static func getUserProfileView(chatUser: ChatUser) -> UIViewController {
         let view = UserProfileView()
-        let presenter = UserProfileViewPresenter(view: view)
-        
+        let presenter = UserProfileViewPresenter(view: view, chatUser: chatUser)
+
         view.presenter = presenter
-        
+
         return view
     }
     

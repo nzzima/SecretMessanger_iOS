@@ -56,8 +56,8 @@ class UserListView: UIViewController, UserListViewProtocol {
 
 extension UserListView: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let messanger = Builder.getMessangerView(chatUser: presenter.users[indexPath.row])
-        navigationController?.pushViewController(messanger, animated: true)
+        let profile = Builder.getUserProfileView(chatUser: presenter.users[indexPath.row])
+        navigationController?.pushViewController(profile, animated: true)
    }
 }
 

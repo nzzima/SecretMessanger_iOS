@@ -78,7 +78,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         // вставка продублировала бы сообщение.
         messangerManager.send(text: text,
                               convoId: convoId,
-                              from: selfSender.senderId,
-                              to: otherSender.senderId)
+                              from: selfSender,
+                              to: otherSender)
     }
 }

@@ -46,7 +46,7 @@ class MessangerManager {
         listener = nil
     }
 
-    func send(text: String, convoId: String, from selfId: String, to otherId: String) {
+    func send(text: String, convoId: String, from selfSender: Sender, to otherSender: Sender) {
         let date = Date()
 
         ref.collection(.conversation)
@@ -54,18 +54,30 @@ class MessangerManager {
             .collection(.messages)
             .document(UUID().uuidString)
             .setData([
-                "senderId": selfId,
+                "senderId": selfSender.senderId,
                 "message": text,
                 "date": date
             ])
 
+        //MARK: Своё имя пишем всегда, чужое — только если знаем. Чат, открытый из
+        // списка диалогов, имени собеседника ещё может не знать, и безусловная запись
+        // затёрла бы уже сохранённое значение пустой строкой. `merge: true` сливает
+        // вложенную карту по ключам, поэтому чужая запись при этом уцелеет.
+        var logins = [selfSender.senderId: selfSender.displayName]
+
+        if !otherSender.displayName.isEmpty {
+            logins[otherSender.senderId] = otherSender.displayName
+        }
+
         //MARK: Шапка диалога. По ней экран «Чаты» соберёт список запросом
         // whereField("users", arrayContains: uid) — отдельная копия на каждого
-        // собеседника не нужна.
+        // собеседника не нужна. Имена лежат здесь же, иначе списку пришлось бы
+        // дочитывать профиль собеседника на каждую строку.
         ref.collection(.conversation)
             .document(convoId)
             .setData([
-                "users": [selfId, otherId],
+                "users": [selfSender.senderId, otherSender.senderId],
+                "logins": logins,
                 "lastMessage": text,
                 "date": date
             ], merge: true)

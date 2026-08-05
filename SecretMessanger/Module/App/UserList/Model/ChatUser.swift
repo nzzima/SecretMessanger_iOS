@@ -10,6 +10,11 @@ import Foundation
 struct ChatUser {
     var id: String
     var login: String
+    
+    init(id: String, login: String) {
+        self.id = id
+        self.login = login
+    }
 
     init(id: String, userInfo: [String: Any]) {
         self.id = id

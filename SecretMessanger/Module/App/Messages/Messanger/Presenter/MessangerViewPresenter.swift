@@ -9,6 +9,7 @@ import Foundation
 
 protocol MessangerViewPresenterProtocol: AnyObject {
     var title: String { get }
+    var isGroup: Bool { get }
     var selfSender: Sender { get }
     var messages: [Message] { get }
     func sendMessage(text: String)
@@ -19,25 +20,20 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     weak var view: MessangerViewProtocol?
 
     private let messangerManager = MessangerManager()
-    private let convoId: String
-    private let otherSender: Sender
+    private let chat: Chat
 
-    private(set) var selfSender: Sender
     private(set) var messages: [Message] = []
 
-    var title: String {
-        otherSender.displayName
+    var title: String { chat.title }
+    var isGroup: Bool { chat.isGroup }
+
+    var selfSender: Sender {
+        Sender(senderId: chat.selfId, displayName: chat.login(for: chat.selfId))
     }
 
-    required init(view: MessangerViewProtocol?, chatUser: ChatUser) {
+    required init(view: MessangerViewProtocol?, chat: Chat) {
         self.view = view
-
-        let selfId = FirebaseManager.shared.getUser()?.uid ?? ""
-
-        self.selfSender = Sender(senderId: selfId,
-                                 displayName: UserDefaults.standard.string(forKey: "selfName") ?? "")
-        self.otherSender = Sender(senderId: chatUser.id, displayName: chatUser.login)
-        self.convoId = MessangerManager.conversationId(selfId, chatUser.id)
+        self.chat = chat
 
         observeMessages()
     }
@@ -47,7 +43,13 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     }
 
     private func observeMessages() {
-        messangerManager.observeMessages(convoId: convoId) { [weak self] messages in
+        messangerManager.ensureConversation(chat: chat) { [weak self] in
+            self?.startObserving()
+        }
+    }
+
+    private func startObserving() {
+        messangerManager.observeMessages(convoId: chat.id) { [weak self] messages in
             guard let self else { return }
 
             self.messages = messages.map { message in
@@ -63,10 +65,10 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         }
     }
 
-    //MARK: В диалоге на двоих отправитель всегда один из двух, поэтому имя
-    // восстанавливается по id без похода в базу.
+    //MARK: Отправитель в базе хранится одним лишь id — имя берём из состава чата,
+    // он же лежит в шапке диалога. Работает и для группы, а не только для пары.
     private func sender(for id: String) -> Sender {
-        id == selfSender.senderId ? selfSender : otherSender
+        Sender(senderId: id, displayName: chat.login(for: id))
     }
 
     func sendMessage(text: String) {
@@ -76,9 +78,6 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         //MARK: В список локально не добавляем: Firestore отдаёт собственную запись
         // обратно через слушателя сразу, ещё до подтверждения сервером. Ручная
         // вставка продублировала бы сообщение.
-        messangerManager.send(text: text,
-                              convoId: convoId,
-                              from: selfSender,
-                              to: otherSender)
+        messangerManager.send(text: text, chat: chat)
     }
 }

@@ -10,7 +10,7 @@ import Foundation
 protocol UserProfileViewPresenterProtocol: AnyObject {
     var title: String { get }
     var profile: ProfileInfo? { get }
-    var chatUser: ChatUser { get }
+    var chat: Chat? { get }
 }
 
 class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
@@ -30,8 +30,16 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
         return login
     }
 
-    var chatUser: ChatUser {
-        ChatUser(id: userId, login: title)
+    //MARK: Диалог на двоих: id соберётся из пары uid, поэтому кнопка «написать»
+    // открывает существующую переписку, а не заводит вторую.
+    var chat: Chat? {
+        guard let selfId = FirebaseManager.shared.getUser()?.uid else { return nil }
+
+        let selfLogin = UserDefaults.standard.string(forKey: "selfName") ?? ""
+
+        return Chat(selfId: selfId,
+                    selfLogin: selfLogin,
+                    contacts: [ChatUser(id: userId, login: title)])
     }
 
     required init(view: any UserProfileViewProtocol, chatUser: ChatUser) {

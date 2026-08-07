@@ -9,7 +9,7 @@ import Foundation
 
 protocol MessageListViewPresenterProtocol: AnyObject {
     var conversations: [Conversation] { get }
-    func chatUser(at index: Int) -> ChatUser
+    func chat(at index: Int) -> Chat
 }
 
 class MessageListViewPresenter: MessageListViewPresenterProtocol {
@@ -44,9 +44,7 @@ class MessageListViewPresenter: MessageListViewPresenterProtocol {
         }
     }
 
-    func chatUser(at index: Int) -> ChatUser {
-        let conversation = conversations[index]
-
-        return ChatUser(id: conversation.otherId, login: conversation.otherLogin)
+    func chat(at index: Int) -> Chat {
+        conversations[index].chat
     }
 }

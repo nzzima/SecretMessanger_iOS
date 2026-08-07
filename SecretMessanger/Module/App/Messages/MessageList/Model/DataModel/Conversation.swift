@@ -8,26 +8,27 @@
 import Foundation
 import FirebaseFirestore
 
+//MARK: Строка списка «Чаты»: сам чат плюс то, что показывается в превью.
 struct Conversation {
-    var id: String
-    var otherId: String
-    var otherLogin: String
-    var lastMessage: String
-    var date: Date
+    let chat: Chat
+    let lastMessage: String
+    let date: Date
 
-    //MARK: Инициализатор падающий: диалог без второго участника показать нечем,
-    // такой документ просто выпадает из списка вместо пустой строки в таблице.
+    var title: String { chat.title }
+    var isGroup: Bool { chat.isGroup }
+
+    //MARK: Инициализатор падающий сразу по двум причинам. Диалог, в котором нас нет,
+    // показать нечем. А диалог без единого сообщения существует штатно: шапка
+    // заводится при открытии чата, чтобы правила могли проверить состав участников —
+    // но в списке ему делать нечего, пока никто ничего не написал.
     init?(id: String, selfId: String, data: [String: Any]) {
-        let users = data["users"] as? [String] ?? []
+        guard let chat = Chat(id: id, selfId: selfId, data: data) else { return nil }
 
-        guard let otherId = users.first(where: { $0 != selfId }) else { return nil }
+        let lastMessage = data["lastMessage"] as? String ?? ""
+        guard !lastMessage.isEmpty else { return nil }
 
-        let logins = data["logins"] as? [String: String] ?? [:]
-
-        self.id = id
-        self.otherId = otherId
-        self.otherLogin = logins[otherId] ?? ""
-        self.lastMessage = data["lastMessage"] as? String ?? ""
+        self.chat = chat
+        self.lastMessage = lastMessage
         self.date = (data["date"] as? Timestamp)?.dateValue() ?? Date()
     }
 }

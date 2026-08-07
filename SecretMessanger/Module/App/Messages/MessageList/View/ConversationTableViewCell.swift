@@ -63,7 +63,7 @@ class ConversationTableViewCell: UITableViewCell {
     }
 
     func configCell(_ conversation: Conversation) {
-        loginLabel.text = conversation.otherLogin
+        loginLabel.text = conversation.title
         lastMessageLabel.text = conversation.lastMessage.truncate(to: 40)
         dateLabel.text = conversation.date.formatted(date: .omitted, time: .shortened)
     }

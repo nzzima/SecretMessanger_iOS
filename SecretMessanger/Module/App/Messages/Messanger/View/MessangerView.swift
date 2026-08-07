@@ -104,11 +104,24 @@ extension MessangerView: MessagesDataSource {
 
 extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
 
-    //MARK: Имя отправителя над баблом не выводим: в диалоге на двоих сторона бабла и
-    // аватар уже говорят, кто написал, а подпись над каждым сообщением только
-    // засоряет переписку.
+    //MARK: Имя отправителя нужно только в группе и только над чужими сообщениями:
+    // в диалоге на двоих сторона бабла и аватар уже говорят, кто написал, а свои
+    // сообщения подписывать незачем в любом случае.
     func messageTopLabelHeight(for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
-        0
+        showsSenderName(for: message) ? 18 : 0
+    }
+
+    func messageTopLabelAttributedText(for message: any MessageType, at indexPath: IndexPath) -> NSAttributedString? {
+        guard showsSenderName(for: message) else { return nil }
+
+        return NSAttributedString(string: message.sender.displayName, attributes: [
+            .font: UIFont.systemFont(ofSize: 13),
+            .foregroundColor: UIColor.lightGray
+        ])
+    }
+
+    private func showsSenderName(for message: any MessageType) -> Bool {
+        presenter.isGroup && !isFromSelf(message)
     }
 
     //MARK: Высота от низа бабла до времени

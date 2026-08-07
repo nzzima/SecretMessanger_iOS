@@ -13,11 +13,24 @@ class MessangerManager {
     private let ref = Firestore.firestore()
     private var listener: ListenerRegistration?
 
-    //MARK: Id диалога собирается из пары uid, отсортированных по алфавиту. Оба
-    // собеседника независимо приходят к одному и тому же id, поэтому чат, открытый
-    // из контактов, всегда попадает в существующий диалог, а не заводит новый.
-    static func conversationId(_ first: String, _ second: String) -> String {
-        [first, second].sorted().joined(separator: "_")
+    //MARK: Шапку диалога заводим до того, как подписываться на сообщения. Правила
+    // берут состав участников из неё через `get()`, а `get()` по несуществующему
+    // документу роняет проверку: в только что созданном чате слушатель получал бы
+    // «Missing or insufficient permissions» и умирал насовсем.
+    func ensureConversation(chat: Chat, completion: @escaping () -> Void) {
+        ref
+            .collection(.conversation)
+            .document(chat.id)
+            .setData([
+                "users": chat.members,
+                "logins": chat.logins
+            ], merge: true) { err in
+                if let err {
+                    print("Диалог не создался: \(err.localizedDescription)")
+                }
+
+                completion()
+            }
     }
 
     func observeMessages(convoId: String, completion: @escaping ([Message]) -> Void) {
@@ -46,40 +59,37 @@ class MessangerManager {
         listener = nil
     }
 
-    func send(text: String, convoId: String, from selfSender: Sender, to otherSender: Sender) {
+    func send(text: String, chat: Chat) {
         let date = Date()
+        let conversation = ref.collection(.conversation).document(chat.id)
 
-        ref.collection(.conversation)
-            .document(convoId)
-            .collection(.messages)
-            .document(UUID().uuidString)
-            .setData([
-                "senderId": selfSender.senderId,
-                "message": text,
-                "date": date
-            ])
+        //MARK: Шапка обновляется ПЕРЕД записью сообщения, и это не вкусовщина: с
+        // появлением групп участие в сообщениях проверяется правилами по документу
+        // шапки (состав группы в id не закодируешь), поэтому к моменту записи
+        // сообщения она должна быть актуальна. Раньше порядок был обратный.
+        conversation.setData([
+            "users": chat.members,
+            "logins": chat.logins,
+            "lastMessage": text,
+            "date": date
+        ], merge: true) { err in
+            if let err {
+                print("Диалог не обновился: \(err.localizedDescription)")
+                return
+            }
 
-        //MARK: Своё имя пишем всегда, чужое — только если знаем. Чат, открытый из
-        // списка диалогов, имени собеседника ещё может не знать, и безусловная запись
-        // затёрла бы уже сохранённое значение пустой строкой. `merge: true` сливает
-        // вложенную карту по ключам, поэтому чужая запись при этом уцелеет.
-        var logins = [selfSender.senderId: selfSender.displayName]
-
-        if !otherSender.displayName.isEmpty {
-            logins[otherSender.senderId] = otherSender.displayName
+            conversation
+                .collection(.messages)
+                .document(UUID().uuidString)
+                .setData([
+                    "senderId": chat.selfId,
+                    "message": text,
+                    "date": date
+                ]) { err in
+                    if let err {
+                        print("Сообщение не отправилось: \(err.localizedDescription)")
+                    }
+                }
         }
-
-        //MARK: Шапка диалога. По ней экран «Чаты» соберёт список запросом
-        // whereField("users", arrayContains: uid) — отдельная копия на каждого
-        // собеседника не нужна. Имена лежат здесь же, иначе списку пришлось бы
-        // дочитывать профиль собеседника на каждую строку.
-        ref.collection(.conversation)
-            .document(convoId)
-            .setData([
-                "users": [selfSender.senderId, otherSender.senderId],
-                "logins": logins,
-                "lastMessage": text,
-                "date": date
-            ], merge: true)
     }
 }

@@ -24,30 +24,47 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Диалог.
+    // Диалог — на двоих или групповой, правила одни и те же.
     match /conversation/{convoId} {
 
-      // Участие в самих сообщениях проверяется по id диалога, а не по документу-шапке.
-      // Id собран из пары uid, отсортированных по алфавиту, поэтому чужой диалог
-      // просто не содержит твоего uid. Так дешевле (не нужно читать родительский
-      // документ) и, главное, работает для первого сообщения: клиент пишет сообщение
-      // раньше, чем шапку диалога, и на этот момент шапки ещё не существует.
-      function isParticipant() {
-        return signedIn() && convoId.split('_').hasAny([request.auth.uid]);
+      function isMember() {
+        return signedIn() && request.auth.uid in resource.data.users;
       }
 
-      // Шапку читаем по массиву `users`: запрос экрана «Чаты»
+      function joiningAsMember() {
+        return signedIn() && request.auth.uid in request.resource.data.users;
+      }
+
+      // Читаем по массиву `users`: запрос экрана «Чаты»
       // (`whereField("users", arrayContains: uid)`) ровно этому условию и
       // соответствует, поэтому список собирается, а чужие диалоги не отдаются.
-      allow read: if signedIn() && request.auth.uid in resource.data.users;
-      allow create, update: if signedIn() && request.auth.uid in request.resource.data.users;
+      allow read: if isMember();
+
+      // На обновлении проверяются оба состояния: писать может только участник, и
+      // результат должен по-прежнему включать его — иначе можно было бы вычеркнуть
+      // себя из чужого диалога или переписать состав на произвольный.
+      allow create: if joiningAsMember();
+      allow update: if isMember() && joiningAsMember();
       allow delete: if false;
 
-      // Сообщения неизменяемы: отправитель обязан совпадать с вошедшим аккаунтом,
-      // править и удалять чужое (и своё) нельзя.
+      // Сообщения.
+      //
+      // Состав берётся из документа-шапки, а не из id диалога. Для переписки на
+      // двоих участие можно было прочитать прямо из пути (id — пара uid по
+      // алфавиту), но в группе состав в id не закодируешь, поэтому проверка одна на
+      // оба случая. Плата за это — лишнее чтение документа на каждую операцию с
+      // сообщением, и требование, чтобы шапка существовала до первого сообщения:
+      // клиент пишет её первой.
       match /messages/{messageId} {
-        allow read: if isParticipant();
-        allow create: if isParticipant() && request.resource.data.senderId == request.auth.uid;
+
+        function members() {
+          return get(/databases/$(database)/documents/conversation/$(convoId)).data.users;
+        }
+
+        allow read: if signedIn() && request.auth.uid in members();
+        allow create: if signedIn()
+                      && request.auth.uid in members()
+                      && request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
       }
     }

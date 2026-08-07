@@ -60,7 +60,7 @@ class UserListView: UIViewController, UserListViewProtocol {
     }
 
     @objc func searchButton() {
-        print("Start search")
+        navigationController?.pushViewController(Builder.getNewChatView(), animated: true)
     }
 
     func reloadTable() {

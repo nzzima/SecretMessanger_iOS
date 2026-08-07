@@ -75,7 +75,9 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
     }
 
     @objc func goToMessanger(_ sender: UIButton) {
-        let messanger = Builder.getMessangerView(chatUser: presenter.chatUser)
+        guard let chat = presenter.chat else { return }
+
+        let messanger = Builder.getMessangerView(chat: chat)
         navigationController?.pushViewController(messanger, animated: true)
     }
 

@@ -11,17 +11,19 @@ import FirebaseFirestore
 
 class UserListManager {
     private let ref = Firestore.firestore()
-    private var lastDoc: DocumentSnapshot?
-        
+    private var listener: ListenerRegistration?
+
     func getAllUsers(completion: @escaping ([ChatUser]) -> Void) {
-        ref
+        listener?.remove()
+
+        listener = ref
             .collection(.users)
-            
+
             //MARK: default: .getDocuments (or .addSnapshotListener - to imedietly update database changed info about users (add, delete, change userInfo) by Firebase changing)
             .addSnapshotListener { snap, err in
                 guard err == nil else { return }
                 guard let docs = snap?.documents else { return }
-                
+
                 var users: [ChatUser] = []
                 docs.forEach { user in
                     let userData = user.data()
@@ -32,5 +34,10 @@ class UserListManager {
                 }
                 completion(users)
             }
+    }
+
+    func stopObserving() {
+        listener?.remove()
+        listener = nil
     }
 }

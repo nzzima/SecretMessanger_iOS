@@ -13,31 +13,27 @@ protocol EditProfileViewPresenterProtocol: AnyObject {
 }
 
 class EditProfileViewPresenter: EditProfileViewPresenterProtocol {
-    
+
     weak var view: EditProfileViewProtocol?
-    
+
     private let editProfileManager = EditProfileManager()
-    
+
     var name: String = ""
     var someInfo: String = ""
-    
+
     required init(view: any EditProfileViewProtocol) {
         self.view = view
-        
-        getActiveUserName()
-        getActiveUserSomeInfo()
+
+        getActiveUser()
     }
-    
-    func getActiveUserName() {
-        editProfileManager.getActiveUserName { name in
-            //guard let self = self else { return }
+
+    func getActiveUser() {
+        //MARK: `[weak self]` здесь обязателен: без него замыкание удерживало презентер,
+        // а слушатель, который её держал, никогда не снимался — экран не освобождался.
+        editProfileManager.getActiveUser { [weak self] name, someInfo in
+            guard let self else { return }
+
             self.name = name
-        }
-    }
-    
-    func getActiveUserSomeInfo() {
-        editProfileManager.getActiveUserSomeInfo { someInfo in
-            //guard let self = self else { return }
             self.someInfo = someInfo
         }
     }

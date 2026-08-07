@@ -22,6 +22,10 @@ class UserListViewPresenter: UserListViewPresenterProtocol {
         self.view = view
         getAllUsers()
     }
+
+    deinit {
+        userListManager.stopObserving()
+    }
     
     func getAllUsers() {
         userListManager.getAllUsers { [weak self] users in

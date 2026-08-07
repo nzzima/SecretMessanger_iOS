@@ -22,6 +22,10 @@ class ProfileViewPresenter: ProfileViewPresenterProtocol {
         self.view = view
         getActiveUser()
     }
+
+    deinit {
+        profileManager.stopObserving()
+    }
     
     func getActiveUser() {
         profileManager.getActiveUser { [weak self] activeUser in

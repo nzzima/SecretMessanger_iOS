@@ -10,30 +10,37 @@ import Firebase
 import FirebaseFirestore
 
 class ProfileManager {
+
     private let ref = Firestore.firestore()
-    //private var lastDoc: DocumentSnapshot?
-        
+    private var listener: ListenerRegistration?
+
+    //MARK: Профиль лежит в users/{uid}, поэтому читаем один документ вместо того,
+    // чтобы тянуть всю коллекцию и искать себя перебором. Слушатель здесь по делу:
+    // экран должен показывать изменения профиля сразу после сохранения.
     func getActiveUser(completion: @escaping ([String]) -> Void) {
-        ref
+        guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
+
+        listener?.remove()
+
+        listener = ref
             .collection(.users)
-            
-            //MARK: default: .getDocuments (or .addSnapshotListener - to imedietly update database changed info about users (add, delete, change userInfo) by Firebase changing)
+            .document(uid)
             .addSnapshotListener { snap, err in
-                guard err == nil else { return }
-                guard let docs = snap?.documents else { return }
-                
-                var activeUser: [String] = []
-                docs.forEach { user in
-                    let userData = user.data()
-                    if FirebaseManager.shared.getUser()?.uid == user.documentID {
-                        let user = ActiveUser(id: user.documentID, userInfo: userData)
-                        activeUser.append(user.id)
-                        activeUser.append(user.login)
-                        activeUser.append(user.name)
-                        activeUser.append(user.someInfo)
-                    }
+                if let err {
+                    print("Профиль не загрузился: \(err.localizedDescription)")
+                    return
                 }
-                completion(activeUser)
+
+                guard let userData = snap?.data() else { return }
+
+                let user = ActiveUser(id: uid, userInfo: userData)
+
+                completion([user.id, user.login, user.name, user.someInfo])
             }
+    }
+
+    func stopObserving() {
+        listener?.remove()
+        listener = nil
     }
 }

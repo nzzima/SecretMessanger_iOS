@@ -9,6 +9,7 @@ import Foundation
 
 protocol RegistrationViewPresenterProtocol: AnyObject {
     func register(email: String, login: String, password: String, passwordRepeat: String)
+    func didConfirmRegistration()
     func goToAuthorization()
 }
 
@@ -50,12 +51,22 @@ class RegistrationViewPresenter: RegistrationViewPresenterProtocol {
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.appWindow])
+                    self?.view?.showRegistrationSuccess(login: login)
                 case .failure(let err):
                     self?.view?.showError(err.localizedDescription)
                 }
             }
         }
+    }
+
+    //MARK: Вход не переспрашиваем. `createUser` уже залогинил нового пользователя,
+    // так что отправлять его на экран авторизации значило бы сначала разлогинить —
+    // и заставить в третий раз набрать пароль, который он только что ввёл дважды.
+    // Безопасности это не добавляет: аккаунт создан этим же клиентом и этим же
+    // паролем секунду назад. Подтверждением личности была бы проверка почты, а это
+    // отдельный механизм.
+    func didConfirmRegistration() {
+        NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.appWindow])
     }
 
     func goToAuthorization() {

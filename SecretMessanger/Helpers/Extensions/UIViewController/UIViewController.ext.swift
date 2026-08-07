@@ -20,8 +20,14 @@ extension UIViewController {
     }
 
     func showErrorAlert(_ message: String) {
-        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Ок", style: .default))
+        showAlert(title: "Ошибка", message: message)
+    }
+
+    func showAlert(title: String, message: String, onOk: (() -> Void)? = nil) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Ок", style: .default) { _ in
+            onOk?()
+        })
         present(alert, animated: true)
     }
 }

@@ -9,6 +9,7 @@ import UIKit
 
 protocol RegistrationViewProtocol: AnyObject {
     func showError(_ message: String)
+    func showRegistrationSuccess(login: String)
 }
 
 class RegistrationView: UIViewController, RegistrationViewProtocol {
@@ -17,6 +18,13 @@ class RegistrationView: UIViewController, RegistrationViewProtocol {
 
     func showError(_ message: String) {
         showErrorAlert(message)
+    }
+
+    func showRegistrationSuccess(login: String) {
+        showAlert(title: "Аккаунт создан",
+                  message: "Добро пожаловать, \(login)!") { [weak self] in
+            self?.presenter.didConfirmRegistration()
+        }
     }
 
     let pageTitle: UILabel = {

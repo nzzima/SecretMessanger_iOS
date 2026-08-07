@@ -104,9 +104,11 @@ extension MessangerView: MessagesDataSource {
 
 extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
 
-    //MARK: Высота от верха бабла до имени отправителя
+    //MARK: Имя отправителя над баблом не выводим: в диалоге на двоих сторона бабла и
+    // аватар уже говорят, кто написал, а подпись над каждым сообщением только
+    // засоряет переписку.
     func messageTopLabelHeight(for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
-        20
+        0
     }
 
     //MARK: Высота от низа бабла до времени
@@ -120,13 +122,6 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
 
     func textColor(for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIColor {
         .white
-    }
-
-    func messageTopLabelAttributedText(for message: any MessageType, at indexPath: IndexPath) -> NSAttributedString? {
-        NSAttributedString(string: message.sender.displayName, attributes: [
-            .font: UIFont.systemFont(ofSize: 14),
-            .foregroundColor: UIColor.lightGray
-        ])
     }
 
     func messageBottomLabelAttributedText(for message: any MessageType, at indexPath: IndexPath) -> NSAttributedString? {

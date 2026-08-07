@@ -38,13 +38,24 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         presenter.signIn(userInfo: userInfo)
         }
     
+    private lazy var toRegistrationButton: UIButton = {
+        $0.setTitle("Нет аккаунта? Зарегистрироваться", for: .normal)
+        $0.setTitleColor(.faceid, for: .normal)
+        $0.titleLabel?.font = .systemFont(ofSize: 15)
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        $0.addAction(UIAction(handler: { _ in
+            NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.registrationWindow])
+        }), for: .touchUpInside)
+        return $0
+    }(UIButton())
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .bgMain
         self.hideKeyboardWhenTappedAround()
-        
-        view.addSubviews(pageTitle, emailField, passwordField, authorizationButton)
-        
+
+        view.addSubviews(pageTitle, emailField, passwordField, authorizationButton, toRegistrationButton)
+
         setConstraints()
     }
     
@@ -66,7 +77,10 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
             authorizationButton.topAnchor.constraint(equalTo: passwordField.bottomAnchor, constant: 50),
             authorizationButton.heightAnchor.constraint(equalToConstant: 40),
             authorizationButton.widthAnchor.constraint(equalToConstant: 150),
-            authorizationButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+            authorizationButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+
+            toRegistrationButton.topAnchor.constraint(equalTo: authorizationButton.bottomAnchor, constant: 20),
+            toRegistrationButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
     }
 }

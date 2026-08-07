@@ -8,7 +8,7 @@
 import UIKit
 
 enum WindowManager: String {
-    case biometricWindow, authorizationWindow, appWindow
+    case biometricWindow, authorizationWindow, registrationWindow, appWindow
 }
 
 enum UserInfoKeys: String {
@@ -46,6 +46,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             window?.rootViewController = Builder.getBiometricAuthorizationView()
         case .authorizationWindow:
             window?.rootViewController = Builder.getAuthorizationView()
+        case .registrationWindow:
+            window?.rootViewController = Builder.getRegistrationView()
         case .appWindow:
             window?.rootViewController = Builder.getTabBarView()
             

@@ -17,6 +17,15 @@ class Builder {
         return view
     }
     
+    static func getRegistrationView() -> UIViewController {
+        let view = RegistrationView()
+        let presenter = RegistrationViewPresenter(view: view)
+
+        view.presenter = presenter
+
+        return view
+    }
+
     static func getBiometricAuthorizationView() -> UIViewController {
         let view = BiometricAuthorizationView()
         let presenter = BiometricAuthorizationViewPresenter(view: view)

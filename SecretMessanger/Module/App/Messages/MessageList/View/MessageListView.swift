@@ -18,14 +18,22 @@ class MessageListView: UIViewController, MessageListViewProtocol {
 
     let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
 
+    //MARK: `UITableView(frame: view.bounds)` здесь стоять не должно: обращение к
+    // `view.bounds` внутри инициализатора принудительно грузит view, а `viewDidLoad`
+    // в этот момент снова обращается к `tableView`. Пока внешний инициализатор не
+    // завершился, хранилище lazy-свойства пустое, поэтому создаётся вторая таблица:
+    // на экран попадает она, а свойство остаётся с первой. Дальше `reloadData()`
+    // уходит в таблицу, которой на экране нет, и список перестаёт обновляться —
+    // новый диалог появлялся только после перезапуска приложения.
     lazy var tableView: UITableView = {
         $0.register(ConversationTableViewCell.self, forCellReuseIdentifier: ConversationTableViewCell.reuseIdentifier)
         $0.dataSource = self
         $0.delegate = self
         $0.backgroundColor = .bgMain
         $0.separatorStyle = .none
+        $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
-    }(UITableView(frame: view.bounds))
+    }(UITableView())
 
     private let emptyLabel: UILabel = {
         $0.text = "Пока ни одного диалога.\nНачните переписку из «Контактов»."
@@ -47,14 +55,27 @@ class MessageListView: UIViewController, MessageListViewProtocol {
         view.addSubviews(tableView, emptyLabel)
 
         NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
             emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             emptyLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
             emptyLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
+
+        //MARK: Данные могли прийти до загрузки экрана — показываем то, что уже есть.
+        reloadTable()
     }
 
     func reloadTable() {
+        //MARK: Без этой проверки первый же снапшот, пришедший до загрузки экрана,
+        // тянул бы view из памяти раньше времени. Всё, что накопилось, покажет
+        // `viewDidLoad`.
+        guard isViewLoaded else { return }
+
         tableView.reloadData()
 
         //MARK: Пустой список — не ошибка, но и не повод показывать голый экран:

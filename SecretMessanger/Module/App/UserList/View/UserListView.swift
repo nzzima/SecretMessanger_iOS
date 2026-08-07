@@ -18,14 +18,18 @@ class UserListView: UIViewController, UserListViewProtocol {
     
     let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
     
+    //MARK: Про `frame: view.bounds` в lazy-свойстве — см. подробный комментарий в
+    // MessageListView: он приводил к созданию двух таблиц, и список переставал
+    // обновляться после первой отрисовки.
     lazy var tableView: UITableView = {
         $0.register(UINib(nibName: "UserCellTableViewCell", bundle: nil), forCellReuseIdentifier: UserCellTableViewCell.reuseIdentifier)
         $0.dataSource = self
         $0.backgroundColor = .bgMain
         $0.delegate = self
         $0.separatorStyle = .none
+        $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
-    }(UITableView(frame: view.bounds))
+    }(UITableView())
     
     lazy var rigthBarButton: UIButton = {
         $0.setImage(UIImage(systemName: "rectangle.and.pencil.and.ellipsis"), for: .normal)
@@ -43,13 +47,25 @@ class UserListView: UIViewController, UserListViewProtocol {
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
         view.addSubviews(tableView)
+
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+
+        //MARK: Юзеры могли прийти до загрузки экрана — показываем то, что уже есть.
+        reloadTable()
     }
-    
+
     @objc func searchButton() {
         print("Start search")
     }
-    
+
     func reloadTable() {
+        guard isViewLoaded else { return }
+
         tableView.reloadData()
     }
 }

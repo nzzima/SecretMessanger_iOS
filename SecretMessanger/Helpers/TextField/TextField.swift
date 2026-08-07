@@ -10,11 +10,13 @@ import UIKit
 class TextField: UITextField {
     var fieldPlaceholder: String
     var isPassword: Bool
-    
-    init(frame: CGRect = .zero, fieldPlaceholder: String, isPassword: Bool = false) {
+    var fieldKeyboardType: UIKeyboardType
+
+    init(frame: CGRect = .zero, fieldPlaceholder: String, isPassword: Bool = false, keyboardType: UIKeyboardType = .default) {
         self.fieldPlaceholder = fieldPlaceholder
         self.isPassword = isPassword
-        
+        self.fieldKeyboardType = keyboardType
+
         super.init(frame: frame)
         translatesAutoresizingMaskIntoConstraints = false
         setupTextField()
@@ -33,6 +35,17 @@ class TextField: UITextField {
         textColor = .white
         layer.cornerRadius = 15
         autocapitalizationType = .none // Disabled field beginning with initial caps
+        keyboardAppearance = .dark
+
+        //MARK: Без явного типа клавиатура открывается в языке системы, и в поле почты
+        // на русской раскладке набирается кириллица. Для email это ещё и убирает
+        // автокоррекцию, которая правит адреса на «похожие» слова.
+        keyboardType = fieldKeyboardType
+
+        if fieldKeyboardType == .emailAddress {
+            autocorrectionType = .no
+            textContentType = .emailAddress
+        }
     }
     
     required init?(coder: NSCoder) {

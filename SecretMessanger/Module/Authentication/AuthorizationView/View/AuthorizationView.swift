@@ -27,7 +27,7 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
         return $0
     }(UILabel())
     
-    private lazy var emailField:UITextField = TextField(fieldPlaceholder: "Email")
+    private lazy var emailField:UITextField = TextField(fieldPlaceholder: "Email", keyboardType: .emailAddress)
     private lazy var passwordField:UITextField = TextField(fieldPlaceholder: "Пароль", isPassword: true)
     
     private lazy var authorizationButton:UIButton = Button(buttonText: "Войти", buttonImage: UIImage()) { [weak self] in

@@ -75,11 +75,14 @@ class AuthenticationManager {
             let name = field("name").isEmpty ? (email.components(separatedBy: "@").first ?? "") : field("name")
             let login = field("login").isEmpty ? name : field("login")
 
+            //MARK: Почта сюда не пишется. Профили читает любой вошедший — так устроен
+            // список контактов, — а `email` при этом не нужен ни одному экрану:
+            // `ProfileInfo` его намеренно не показывает. В Firestore он лежал бы
+            // открытым без всякой пользы; адрес и так есть в Firebase Auth.
             let profile: [String: Any] = [
                 "login": login,
                 "name": name,
-                "someInfo": field("someInfo"),
-                "email": email
+                "someInfo": field("someInfo")
             ]
 
             document.setData(profile, merge: true) { err in

@@ -11,6 +11,7 @@ import InputBarAccessoryView
 
 protocol MessangerViewProtocol: AnyObject {
     func reloadCollection()
+    func reloadTitle()
 }
 
 class MessangerView: MessagesViewController, MessangerViewProtocol {
@@ -26,7 +27,23 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         navigationController?.navigationBar.titleTextAttributes = textAttributes
         showMessageTimestampOnSwipeLeft = true
 
+        //MARK: Кнопка только в группе. Диалог на двоих третьим не дополняется: его
+        // id — пара uid по алфавиту, и чат из «Контактов» всегда попадает именно в
+        // него. Дописав туда третьего, мы получили бы группу, в которую эти двое
+        // проваливаются каждый раз, когда просто хотят написать друг другу.
+        if presenter.isGroup {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "person.2"),
+                                                                style: .plain,
+                                                                target: self,
+                                                                action: #selector(showMembers))
+        }
+
         settingMessanger()
+    }
+
+    @objc private func showMembers() {
+        let members = Builder.getChatMembersView(chat: presenter.chat)
+        navigationController?.pushViewController(members, animated: true)
     }
 
     private func settingMessanger() {
@@ -84,6 +101,11 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
         guard !presenter.messages.isEmpty else { return }
         messagesCollectionView.scrollToLastItem(animated: false)
+    }
+
+    //MARK: Название группы — это её состав, поэтому оно меняется вместе с ним.
+    func reloadTitle() {
+        title = presenter.title
     }
 }
 

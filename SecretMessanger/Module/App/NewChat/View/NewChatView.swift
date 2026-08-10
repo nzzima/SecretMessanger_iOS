@@ -28,7 +28,8 @@ class NewChatView: UIViewController, NewChatViewProtocol {
     }(UITableView())
 
     private lazy var createButton: UIBarButtonItem = {
-        let item = UIBarButtonItem(title: "Создать", style: .done, target: self, action: #selector(createChat))
+        let title = presenter.isAddingMembers ? "Добавить" : "Создать"
+        let item = UIBarButtonItem(title: title, style: .done, target: self, action: #selector(createChat))
         item.isEnabled = false
         return item
     }()
@@ -37,7 +38,7 @@ class NewChatView: UIViewController, NewChatViewProtocol {
         super.viewDidLoad()
 
         view.backgroundColor = .bgMain
-        navigationItem.title = "Новый чат"
+        navigationItem.title = presenter.isAddingMembers ? "Добавить в группу" : "Новый чат"
         navigationController?.navigationBar.titleTextAttributes = textAttributes
         navigationItem.rightBarButtonItem = createButton
 
@@ -54,6 +55,14 @@ class NewChatView: UIViewController, NewChatViewProtocol {
     }
 
     @objc private func createChat() {
+        //MARK: Добавление возвращает выбранных тому, кто экран открыл, — состав
+        // правит презентер «Участников», у него на руках свежая шапка диалога.
+        if presenter.isAddingMembers {
+            presenter.addSelected()
+            navigationController?.popViewController(animated: true)
+            return
+        }
+
         guard let chat = presenter.makeChat() else { return }
 
         let messanger = Builder.getMessangerView(chat: chat)
@@ -73,6 +82,9 @@ class NewChatView: UIViewController, NewChatViewProtocol {
 
         let count = presenter.selectedCount
         createButton.isEnabled = count > 0
+
+        guard !presenter.isAddingMembers else { return }
+
         navigationItem.title = count > 1 ? "Новая группа" : "Новый чат"
     }
 }

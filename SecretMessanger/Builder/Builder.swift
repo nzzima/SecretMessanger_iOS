@@ -71,6 +71,24 @@ class Builder {
         return view
     }
 
+    static func getAddMembersView(excluded: Set<String>, onAdd: @escaping ([ChatUser]) -> Void) -> UIViewController {
+        let view = NewChatView()
+        let presenter = NewChatViewPresenter(view: view, mode: .addMembers(excluded: excluded, onAdd: onAdd))
+
+        view.presenter = presenter
+
+        return view
+    }
+
+    static func getChatMembersView(chat: Chat) -> UIViewController {
+        let view = ChatMembersView()
+        let presenter = ChatMembersViewPresenter(view: view, chat: chat)
+
+        view.presenter = presenter
+
+        return view
+    }
+
     static func getMessageListView() -> UIViewController {
         let view = MessageListView()
         let presenter = MessageListViewPresenter(view: view)

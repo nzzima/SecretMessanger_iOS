@@ -14,10 +14,18 @@ struct Chat {
     let id: String
     let members: [String]
     let logins: [String: String]
+    let owner: String
     let selfId: String
 
     var isGroup: Bool {
         members.count > 2
+    }
+
+    //MARK: Создатель — единственный, кто меняет состав. У диалогов, заведённых до
+    // появления поля, его нет, и состав в них не поменяет никто: назначать себя
+    // создателем задним числом правила не дают, и это осознанно.
+    var isOwner: Bool {
+        !owner.isEmpty && owner == selfId
     }
 
     //MARK: Название — логины всех, кроме себя. Для диалога на двоих это просто логин
@@ -45,7 +53,7 @@ extension Chat {
         members.count == 2 ? members.sorted().joined(separator: "_") : UUID().uuidString
     }
 
-    //MARK: Новый чат из выбранных контактов.
+    //MARK: Новый чат из выбранных контактов. Создатель — тот, кто выбирал.
     init(selfId: String, selfLogin: String, contacts: [ChatUser]) {
         var logins = [selfId: selfLogin]
         contacts.forEach { logins[$0.id] = $0.login }
@@ -55,6 +63,7 @@ extension Chat {
         self.id = Chat.conversationId(members: members)
         self.members = members
         self.logins = logins
+        self.owner = selfId
         self.selfId = selfId
     }
 
@@ -65,6 +74,7 @@ extension Chat {
         self.id = id
         self.members = members
         self.logins = data["logins"] as? [String: String] ?? [:]
+        self.owner = data["owner"] as? String ?? ""
         self.selfId = selfId
     }
 }

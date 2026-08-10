@@ -70,7 +70,7 @@ class RegistrationManager {
                         // экране регистрации из-за поправимого.
                         print("Профиль при регистрации не записался: \(err.localizedDescription)")
                     } else {
-                        UserDefaults.standard.set(login, forKey: "selfName")
+                        SelfName.current = login
                     }
 
                     completion(.success(true))

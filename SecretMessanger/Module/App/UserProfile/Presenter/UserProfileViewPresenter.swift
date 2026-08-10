@@ -35,7 +35,7 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
     var chat: Chat? {
         guard let selfId = FirebaseManager.shared.getUser()?.uid else { return nil }
 
-        let selfLogin = UserDefaults.standard.string(forKey: "selfName") ?? ""
+        let selfLogin = SelfName.current
 
         return Chat(selfId: selfId,
                     selfLogin: selfLogin,

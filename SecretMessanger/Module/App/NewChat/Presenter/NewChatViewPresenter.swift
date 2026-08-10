@@ -98,7 +98,7 @@ class NewChatViewPresenter: NewChatViewPresenterProtocol {
     func makeChat() -> Chat? {
         guard let selfId = FirebaseManager.shared.getUser()?.uid, !selectedIds.isEmpty else { return nil }
 
-        let selfLogin = UserDefaults.standard.string(forKey: "selfName") ?? ""
+        let selfLogin = SelfName.current
 
         return Chat(selfId: selfId, selfLogin: selfLogin, contacts: selectedContacts)
     }

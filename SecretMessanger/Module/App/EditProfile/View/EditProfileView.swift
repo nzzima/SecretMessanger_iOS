@@ -10,7 +10,9 @@ import FirebaseFirestore
 import UIKit
 
 protocol EditProfileViewProtocol: AnyObject {
-    
+    func fill(login: String, name: String, someInfo: String)
+    func saved()
+    func showError(_ message: String)
 }
 
 class EditProfileView: UIViewController, EditProfileViewProtocol {
@@ -27,6 +29,12 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         $0.layer.cornerRadius = 50
         return $0
     }(UIImageView())
+    
+    let loginLabel: UILabel = {
+        $0.text = "Логин"
+        $0.textColor = .lightGray
+        return $0
+    }(UILabel())
     
     let nameLabel: UILabel = {
         $0.text = "Имя"
@@ -62,6 +70,9 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         return $0
     }(UIButton())
     
+    //MARK: Логин виден собеседникам и участвует в реестре занятых имён, поэтому
+    // клавиатура тут только латинская — как на регистрации.
+    private lazy var loginField: UITextField = TextField(fieldPlaceholder: "Логин", keyboardType: .asciiCapable)
     private lazy var nameField: UITextField = TextField(fieldPlaceholder: "Введите новое имя")
     private lazy var someInfoField: UITextField = TextField(fieldPlaceholder: "Введите новую заметку")
     
@@ -71,7 +82,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         navigationItem.title = "Редактирование"
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
-        view.addSubviews(imageView, editAvatar, nameField, nameLabel, someInfoField, someInfoLabel, exitAccount)
+        view.addSubviews(imageView, editAvatar, loginField, loginLabel, nameField, nameLabel, someInfoField, someInfoLabel, exitAccount)
 
         self.hideKeyboardWhenTappedAround()
         setConstraints()
@@ -86,12 +97,32 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     }
     
     @objc func saveChanges(_ sender: UIBarButtonItem) {
-        print("Save changes")
+        presenter.save(login: loginField.text ?? "",
+                       name: nameField.text ?? "",
+                       someInfo: someInfoField.text ?? "")
+    }
+    
+    func fill(login: String, name: String, someInfo: String) {
+        loginField.text = login
+        nameField.text = name
+        someInfoField.text = someInfo
+    }
+    
+    //MARK: Возвращаемся в профиль: он слушает свой документ и покажет новое сразу,
+    // а оставлять человека на форме после успеха незачем.
+    func saved() {
+        navigationController?.popViewController(animated: true)
+    }
+    
+    func showError(_ message: String) {
+        showErrorAlert(message)
     }
     
     private func setConstraints() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         editAvatar.translatesAutoresizingMaskIntoConstraints = false
+        loginLabel.translatesAutoresizingMaskIntoConstraints = false
+        loginField.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         someInfoField.translatesAutoresizingMaskIntoConstraints = false
         someInfoLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -107,12 +138,22 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
             editAvatar.heightAnchor.constraint(equalToConstant: 40),
             editAvatar.widthAnchor.constraint(equalToConstant: 150),
             
+            loginLabel.bottomAnchor.constraint(equalTo: loginField.topAnchor, constant: -5),
+            loginLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loginLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            loginLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            loginField.topAnchor.constraint(equalTo: editAvatar.bottomAnchor, constant: 40),
+            loginField.heightAnchor.constraint(equalToConstant: 40),
+            loginField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            loginField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
             nameLabel.bottomAnchor.constraint(equalTo: nameField.topAnchor, constant: -5),
             nameLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
             nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
             
-            nameField.topAnchor.constraint(equalTo: editAvatar.bottomAnchor, constant: 40),
+            nameField.topAnchor.constraint(equalTo: loginField.bottomAnchor, constant: 40),
             nameField.heightAnchor.constraint(equalToConstant: 40),
             nameField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             nameField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),

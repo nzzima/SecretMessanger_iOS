@@ -37,7 +37,7 @@ class MessangerManager {
                 let existing = Chat(id: chat.id, selfId: chat.selfId, data: snap.data() ?? [:]) ?? chat
 
                 self.heal(chat: existing) { extra in
-                    var payload: [String: Any] = ["logins": chat.logins]
+                    var payload: [String: Any] = ["logins": self.logins(of: chat)]
                     payload.merge(extra) { _, new in new }
 
                     self.write(payload, to: document, completion: completion)
@@ -47,7 +47,7 @@ class MessangerManager {
                 // что «не прочиталось» на практике означает «документа нет».
                 var payload: [String: Any] = [
                     "users": chat.members,
-                    "logins": chat.logins,
+                    "logins": self.logins(of: chat),
                     "owner": chat.owner
                 ]
                 payload.merge(self.firstKey(for: chat)) { _, new in new }
@@ -55,6 +55,21 @@ class MessangerManager {
                 self.write(payload, to: document, completion: completion)
             }
         }
+    }
+
+    //MARK: Своё имя в шапку кладём всегда актуальное, а не то, что там лежало.
+    // Логин теперь меняется в профиле, а карта `logins` — кэш имён внутри диалога:
+    // без этого собеседники видели бы переименовавшегося под старым именем до тех
+    // пор, пока диалог не заведут заново. Чужие имена по-прежнему не трогаем — их мы
+    // знать не обязаны, а безусловная запись однажды уже затирала их пустой строкой.
+    private func logins(of chat: Chat) -> [String: String] {
+        var logins = chat.logins
+
+        if !SelfName.current.isEmpty {
+            logins[chat.selfId] = SelfName.current
+        }
+
+        return logins
     }
 
     private func write(_ payload: [String: Any], to document: DocumentReference, completion: @escaping () -> Void) {
@@ -208,7 +223,7 @@ class MessangerManager {
         // «Участников». Заводит шапку `ensureConversation`, и до первой отправки она
         // всегда уже есть.
         var header: [String: Any] = [
-            "logins": chat.logins,
+            "logins": logins(of: chat),
             "lastMessage": payload,
             "date": date
         ]

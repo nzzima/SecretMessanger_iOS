@@ -40,7 +40,7 @@ class AuthenticationManager {
             self.ensureProfile(for: user) { result in
                 switch result {
                 case .success(let login):
-                    UserDefaults.standard.set(login, forKey: "selfName")
+                    SelfName.current = login
                 case .failure(let err):
                     //MARK: Вход уже состоялся — Firestore подтягивается позже, чем Auth,
                     // и первый запрос после запуска может упасть в «client is offline».

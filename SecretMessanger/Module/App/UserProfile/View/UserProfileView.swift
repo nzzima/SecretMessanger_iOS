@@ -50,6 +50,9 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
         return $0
     }(UIButton())
 
+    //MARK: Про `frame: view.bounds` в lazy-свойстве — см. подробный комментарий в
+    // MessageListView: он приводил к созданию двух таблиц, и экран переставал
+    // обновляться после первой отрисовки.
     lazy var tableView: UITableView = {
         $0.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         $0.dataSource = self
@@ -58,8 +61,9 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
         $0.tintColor = .white
         $0.separatorColor = .darkGray
         $0.alwaysBounceVertical = false
+        $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
-    }(UITableView(frame: view.bounds, style: .insetGrouped))
+    }(UITableView(frame: .zero, style: .insetGrouped))
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -72,6 +76,9 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
         view.addSubviews(imageView, tableView)
 
         setConstraints()
+
+        //MARK: Профиль мог прийти до загрузки экрана — показываем то, что уже есть.
+        reloadProfile()
     }
 
     @objc func goToMessanger(_ sender: UIButton) {
@@ -82,6 +89,11 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
     }
 
     func reloadProfile() {
+        //MARK: Без этой проверки первый же снапшот, пришедший до загрузки экрана,
+        // тянул бы view из памяти раньше времени. Всё, что накопилось, покажет
+        // `viewDidLoad` — заголовок он ставит сам, тем же `presenter.title`.
+        guard isViewLoaded else { return }
+
         navigationItem.title = presenter.title
         tableView.reloadData()
     }
@@ -92,7 +104,6 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
 
     private func setConstraints() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),

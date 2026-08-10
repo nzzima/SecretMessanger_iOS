@@ -39,6 +39,11 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         return $0
     }(UIButton())
     
+    //MARK: Про `frame: view.bounds` в lazy-свойстве — см. подробный комментарий в
+    // MessageListView: он приводил к созданию двух таблиц, и экран переставал
+    // обновляться после первой отрисовки. Здесь дефект был не теоретическим:
+    // слушатель профиля стартует при запуске приложения, а вкладка открывается
+    // позже, так что первый снапшот регулярно приходил раньше `viewDidLoad`.
     lazy var tableView: UITableView = {
         $0.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         $0.dataSource = self
@@ -47,9 +52,10 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         $0.tintColor = .white
         $0.separatorColor = .darkGray
         $0.alwaysBounceVertical = false
+        $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
-    }(UITableView(frame: view.bounds, style: .insetGrouped))
-    
+    }(UITableView(frame: .zero, style: .insetGrouped))
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .bgMain
@@ -58,8 +64,11 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         navigationItem.rightBarButtonItem = itemRightBar
         navigationController?.navigationBar.titleTextAttributes = textAttributes
         view.addSubviews(imageView, tableView)
-        
+
         setConstraints()
+
+        //MARK: Профиль мог прийти до загрузки экрана — показываем то, что уже есть.
+        reloadTable()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -76,12 +85,16 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     }
     
     func reloadTable() {
+        //MARK: Без этой проверки первый же снапшот, пришедший до загрузки экрана,
+        // тянул бы view из памяти раньше времени. Всё, что накопилось, покажет
+        // `viewDidLoad`.
+        guard isViewLoaded else { return }
+
         tableView.reloadData()
     }
-    
+
     private func setConstraints() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),

@@ -104,6 +104,21 @@ service cloud.firestore {
                && request.resource.data.get('keyVersion', 0) == resource.data.get('keyVersion', 0);
       }
 
+      // Выход по своей воле — единственный случай, когда участник пишет состав, из
+      // которого себя вычёркивает. Поэтому условие отдельное: `joiningAsMember()`
+      // требует остаться в диалоге, и под общую ветку это не подводится.
+      //
+      // Вычеркнуть разрешено ровно себя и никого больше — состав после записи обязан
+      // совпасть со старым минус свой uid. Создателю выход закрыт: группа осталась бы
+      // без того, кто может править состав, а передачи прав пока нет.
+      function leaving() {
+        return isMember()
+               && request.auth.uid != resource.data.get('owner', '')
+               && request.resource.data.users == resource.data.users.removeAll([request.auth.uid])
+               && ownerUnchanged()
+               && keysUnchanged();
+      }
+
       // Читаем по массиву `users`: запрос экрана «Чаты»
       // (`whereField("users", arrayContains: uid)`) ровно этому условию и
       // соответствует, поэтому список собирается, а чужие диалоги не отдаются.
@@ -116,11 +131,12 @@ service cloud.firestore {
       // любой участник при каждой отправке, и состав она не трогает. Менять состав
       // разрешено только создателю, и по-прежнему проверяются оба состояния: он
       // обязан остаться в диалоге, иначе группу можно было бы бросить без хозяина.
-      allow update: if isMember()
-                    && joiningAsMember()
-                    && ownerUnchanged()
-                    && (membersUnchanged() || isOwner())
-                    && (keysUnchanged() || isOwner());
+      allow update: if (isMember()
+                       && joiningAsMember()
+                       && ownerUnchanged()
+                       && (membersUnchanged() || isOwner())
+                       && (keysUnchanged() || isOwner()))
+                    || leaving();
       allow delete: if false;
 
       // Сообщения.

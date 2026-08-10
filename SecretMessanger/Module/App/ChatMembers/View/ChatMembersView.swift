@@ -9,6 +9,7 @@ import UIKit
 
 protocol ChatMembersViewProtocol: AnyObject {
     func reloadTable()
+    func left()
     func showError(_ message: String)
 }
 
@@ -36,6 +37,27 @@ class ChatMembersView: UIViewController, ChatMembersViewProtocol {
                                                  target: self,
                                                  action: #selector(addMembers))
 
+    private lazy var leaveButton: UIButton = {
+        $0.setTitle("Выйти из группы", for: .normal)
+        $0.setTitleColor(.red, for: .normal)
+        $0.titleLabel?.font = .systemFont(ofSize: 17)
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        $0.addTarget(self, action: #selector(leaveGroup), for: .touchUpInside)
+        return $0
+    }(UIButton())
+
+    //MARK: Создателю выход закрыт, и вместо спрятанной кнопки экран говорит почему —
+    // иначе это читалось бы как недоделка.
+    private lazy var ownerNote: UILabel = {
+        $0.text = "Вы создатель группы и не можете из неё выйти"
+        $0.textColor = .gray
+        $0.font = .systemFont(ofSize: 14)
+        $0.numberOfLines = 0
+        $0.textAlignment = .center
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        return $0
+    }(UILabel())
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -49,13 +71,18 @@ class ChatMembersView: UIViewController, ChatMembersViewProtocol {
             navigationItem.rightBarButtonItem = addButton
         }
 
-        view.addSubviews(tableView)
+        let footer: UIView = presenter.canLeave ? leaveButton : ownerNote
+        view.addSubviews(tableView, footer)
 
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            tableView.bottomAnchor.constraint(equalTo: footer.topAnchor, constant: -12),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            footer.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            footer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            footer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30)
         ])
 
         reloadTable()
@@ -69,10 +96,28 @@ class ChatMembersView: UIViewController, ChatMembersViewProtocol {
         navigationController?.pushViewController(picker, animated: true)
     }
 
+    @objc private func leaveGroup() {
+        let alert = UIAlertController(title: "Выйти из группы?",
+                                      message: "Вы перестанете видеть её переписку. Вернуть вас сможет только создатель.",
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Выйти", style: .destructive) { [weak self] _ in
+            self?.presenter.leave()
+        })
+
+        present(alert, animated: true)
+    }
+
     func reloadTable() {
         guard isViewLoaded else { return }
 
         tableView.reloadData()
+    }
+
+    //MARK: Возвращаемся сразу к списку чатов, а не на экран переписки: из группы мы
+    // вышли, и её слушатели уже получают отказ по правам.
+    func left() {
+        navigationController?.popToRootViewController(animated: true)
     }
 
     func showError(_ message: String) {

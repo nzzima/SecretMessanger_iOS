@@ -17,10 +17,12 @@ struct ChatMember {
 protocol ChatMembersViewPresenterProtocol: AnyObject {
     var members: [ChatMember] { get }
     var canManage: Bool { get }
+    var canLeave: Bool { get }
     var excludedIds: Set<String> { get }
     func canRemove(at index: Int) -> Bool
     func remove(at index: Int)
     func add(contacts: [ChatUser])
+    func leave()
 }
 
 class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
@@ -36,13 +38,13 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
     // один раз при открытии экрана, чтобы не бегать в базу из обработчика свайпа.
     private var knownPublicKeys: [String: String] = [:]
 
-    //MARK: Ниже трёх участников группу опускать нельзя. Дело не в вкусе: у
-    // переписки на двоих id детерминированный — пара uid по алфавиту, — и группа с
-    // случайным id, ужавшись до двоих, стала бы вторым чатом тех же людей рядом с
-    // их обычным. Двое остаются вдвоём в своей переписке, а не в остатке группы.
-    private let minimumMembers = 3
-
     var canManage: Bool { chat.isOwner }
+
+    //MARK: Создателю выход закрыт — правило требует, чтобы он остался: иначе группа
+    // осталась бы без единственного, кто может править состав, а передачи прав пока
+    // нет. Для него это ограничение, а не забытая кнопка, поэтому экран говорит об
+    // этом прямо.
+    var canLeave: Bool { !chat.isOwner }
 
     var members: [ChatMember] {
         chat.members.map {
@@ -93,24 +95,17 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
         }
     }
 
-    //MARK: Себя не удаляем: правила запрещают создателю вычеркнуть себя, а выхода
-    // из группы для остальных пока нет — он тянет за собой вопрос, кому достаётся
-    // группа, если уходит создатель.
+    //MARK: Себя из списка не удаляем — для этого есть выход, у него своё правило.
     func canRemove(at index: Int) -> Bool {
         let member = members[index]
 
-        return canManage && !member.isSelf && chat.members.count > minimumMembers
+        return canManage && !member.isSelf
     }
 
     func remove(at index: Int) {
         let member = members[index]
 
         guard canManage, !member.isSelf else { return }
-
-        guard chat.members.count > minimumMembers else {
-            view?.showError("В группе должно остаться хотя бы \(minimumMembers) участника. Переписка на двоих — это отдельный чат из «Контактов».")
-            return
-        }
 
         let remaining = chat.members.filter { $0 != member.id }
 
@@ -143,6 +138,21 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
         guard !entries.isEmpty else { return [:] }
 
         return ["convoKeys": entries, "keyVersion": version]
+    }
+
+    func leave() {
+        guard canLeave else { return }
+
+        chatMembersManager.leave(chat: chat) { [weak self] err in
+            DispatchQueue.main.async {
+                guard let err else {
+                    self?.view?.left()
+                    return
+                }
+
+                self?.view?.showError(err.localizedDescription)
+            }
+        }
     }
 
     func add(contacts: [ChatUser]) {

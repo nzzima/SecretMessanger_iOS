@@ -159,6 +159,27 @@ service cloud.firestore {
                       && request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
       }
+
+      // Голосовые сообщения. Байты лежат отдельной подколлекцией, а не в самом
+      // сообщении, и это не про аккуратность: чат подписан на последние 50 сообщений
+      // и перечитывает их при каждом изменении — с записью внутри каждое открытие
+      // чата тянуло бы мегабайты. В сообщении остаётся длительность, а звук читается
+      // по нажатию «играть».
+      //
+      // Участие проверяется по той же шапке и тем же способом, что у сообщений:
+      // отдельного механизма голосовым не понадобилось.
+      match /audio/{messageId} {
+
+        function members() {
+          return get(/databases/$(database)/documents/conversation/$(convoId)).data.users;
+        }
+
+        allow read: if signedIn() && request.auth.uid in members();
+        allow create: if signedIn()
+                      && request.auth.uid in members()
+                      && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
   }
 }

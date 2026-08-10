@@ -20,6 +20,17 @@ import CryptoKit
 // Версии нужны ради ротации: когда участника удаляют, заводится новый ключ, а старые
 // остаются в шапке, чтобы уже написанное осталось читаемым. Каждое сообщение помнит,
 // какой версией зашифровано.
+enum ConversationCryptoError: LocalizedError {
+    case noKey
+
+    var errorDescription: String? {
+        switch self {
+        case .noKey:
+            return "Ключ этого диалога вам ещё не выдан"
+        }
+    }
+}
+
 final class ConversationCrypto {
 
     static let shared = ConversationCrypto()

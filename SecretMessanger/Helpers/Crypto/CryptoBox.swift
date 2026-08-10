@@ -58,6 +58,21 @@ enum CryptoBox {
         return text
     }
 
+    //MARK: Голосовое сообщение шифруется тем же ключом диалога, что и текст, только
+    // остаётся байтами: в Firestore есть тип `bytes`, и гонять запись через base64
+    // значило бы раздуть её на треть — а мы упираемся в лимит документа в 1 МиБ.
+    static func seal(_ data: Data, with key: SymmetricKey) throws -> Data {
+        let box = try AES.GCM.seal(data, using: key)
+
+        guard let combined = box.combined else { throw CryptoError.malformedPayload }
+
+        return combined
+    }
+
+    static func open(_ data: Data, with key: SymmetricKey) throws -> Data {
+        try AES.GCM.open(try AES.GCM.SealedBox(combined: data), using: key)
+    }
+
     // MARK: - Асимметричное: ключ диалога для участника
 
     static func seal(_ key: SymmetricKey,

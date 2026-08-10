@@ -21,6 +21,12 @@ struct Message: MessageType {
     var isEncrypted: Bool
     var keyVersion: Int
 
+    //MARK: Голосовое отличается от текстового одним полем `type` в документе. Байты
+    // лежат не здесь, а в подколлекции `audio` — в сообщении только длительность,
+    // которой хватает, чтобы нарисовать ячейку до всякой загрузки.
+    var isVoice: Bool
+    var duration: Float
+
     init(sender: SenderType, messageId: String, sentDate: Date, kind: MessageKind) {
         self.sender = sender
         self.messageId = messageId
@@ -29,6 +35,8 @@ struct Message: MessageType {
         self.body = ""
         self.isEncrypted = false
         self.keyVersion = 0
+        self.isVoice = false
+        self.duration = 0
     }
 
     //MARK: В документе лежит только senderId — имя подставляет презентер, он один
@@ -43,11 +51,19 @@ struct Message: MessageType {
         self.body = data["message"] as? String ?? ""
         self.isEncrypted = (data["enc"] as? Int ?? 0) == 1
         self.keyVersion = data["v"] as? Int ?? 0
-        self.kind = .text(self.body)
+        self.isVoice = (data["type"] as? String ?? "") == "audio"
+        self.duration = Float(data["duration"] as? Double ?? 0)
+        self.kind = self.isVoice
+            ? .audio(Voice(messageId: messageId, duration: self.duration))
+            : .text(self.body)
     }
 
-    //MARK: Копия для показа: имя отправителя и уже расшифрованный текст.
+    //MARK: Копия для показа: имя отправителя и уже расшифрованный текст. У голосового
+    // расшифровывать в этот момент нечего — звук приезжает по нажатию.
     func displayed(sender: SenderType, text: String) -> Message {
-        Message(sender: sender, messageId: messageId, sentDate: sentDate, kind: .text(text))
+        Message(sender: sender,
+                messageId: messageId,
+                sentDate: sentDate,
+                kind: isVoice ? .audio(Voice(messageId: messageId, duration: duration)) : .text(text))
     }
 }

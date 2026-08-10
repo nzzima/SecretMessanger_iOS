@@ -12,6 +12,8 @@ import InputBarAccessoryView
 protocol MessangerViewProtocol: AnyObject {
     func reloadCollection()
     func reloadTitle()
+    func recordingStarted()
+    func recordingStopped()
     func showError(_ message: String)
 }
 
@@ -20,6 +22,30 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     var presenter: MessangerViewPresenterProtocol!
 
     private let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
+
+    private var recordingTimer: Timer?
+
+    //MARK: Микрофон стоит слева от поля, чтобы не спорить с отправкой справа. Запись
+    // идёт по удержанию: у голосового нет состояния «набрано, но не отправлено», и
+    // отдельная кнопка «стоп» ему не нужна.
+    private lazy var micButton: InputBarButtonItem = {
+        $0.image = UIImage(systemName: "mic.fill")
+        $0.tintColor = .systemBlue
+        $0.setSize(CGSize(width: 36, height: 36), animated: false)
+        $0.addGestureRecognizer(micGesture)
+        return $0
+    }(InputBarButtonItem())
+
+    private lazy var micGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleMic(_:)))
+
+    //MARK: Подсказка на месте поля ввода, пока идёт запись: без неё непонятно, пишется
+    // ли вообще что-нибудь и сколько уже наговорено.
+    private lazy var recordingLabel: UILabel = {
+        $0.textColor = .systemRed
+        $0.font = .systemFont(ofSize: 16)
+        $0.isHidden = true
+        return $0
+    }(UILabel())
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -51,6 +77,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         messagesCollectionView.messagesDataSource = self
         messagesCollectionView.messagesLayoutDelegate = self
         messagesCollectionView.messagesDisplayDelegate = self
+        messagesCollectionView.messageCellDelegate = self
         messageInputBar.delegate = self
 
         messagesCollectionView.backgroundColor = .bgMain
@@ -95,6 +122,57 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         // выключенной — до первого введённого символа она осталась бы с дефолтным
         // цветом. Красим по текущему состоянию.
         messageInputBar.sendButton.tintColor = messageInputBar.sendButton.isEnabled ? .systemBlue : .darkGray
+
+        messageInputBar.setLeftStackViewWidthConstant(to: 40, animated: false)
+        messageInputBar.setStackViewItems([micButton], forStack: .left, animated: false)
+
+        messageInputBar.addSubview(recordingLabel)
+        recordingLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            recordingLabel.leadingAnchor.constraint(equalTo: messageInputBar.inputTextView.leadingAnchor, constant: 16),
+            recordingLabel.centerYAnchor.constraint(equalTo: messageInputBar.inputTextView.centerYAnchor)
+        ])
+    }
+
+    @objc private func handleMic(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            presenter.startRecording()
+        case .ended:
+            presenter.finishRecording()
+        case .cancelled, .failed:
+            presenter.cancelRecording()
+        default:
+            break
+        }
+    }
+
+    func recordingStarted() {
+        recordingLabel.isHidden = false
+        messageInputBar.inputTextView.isHidden = true
+        micButton.tintColor = .systemRed
+
+        updateRecordingLabel()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            self?.updateRecordingLabel()
+        }
+    }
+
+    func recordingStopped() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+
+        recordingLabel.isHidden = true
+        messageInputBar.inputTextView.isHidden = false
+        micButton.tintColor = .systemBlue
+    }
+
+    //MARK: Показываем, сколько осталось, а не сколько записано: потолок жёсткий, и
+    // упереться в него посреди фразы неприятнее, чем видеть обратный отсчёт.
+    private func updateRecordingLabel() {
+        let left = max(0, VoiceRecorder.maxDuration - presenter.recordingTime)
+
+        recordingLabel.text = "● Запись · осталось " + VoicePlayer.formatted(left)
     }
 
     func reloadCollection() {
@@ -111,6 +189,21 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
     func showError(_ message: String) {
         showErrorAlert(message)
+    }
+}
+
+extension MessangerView: MessageCellDelegate {
+
+    //MARK: Звук тянется из базы только здесь, по нажатию. Ячейка к этому моменту уже
+    // нарисована — ей хватало длительности из самого сообщения.
+    func didTapPlayButton(in cell: AudioMessageCell) {
+        guard let indexPath = messagesCollectionView.indexPath(for: cell) else { return }
+
+        let message = presenter.messages[indexPath.section]
+
+        presenter.playVoice(messageId: message.messageId) { url in
+            VoicePlayer.shared.toggle(url: url, messageId: message.messageId, cell: cell)
+        }
     }
 }
 
@@ -169,6 +262,13 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
             .font: UIFont.systemFont(ofSize: 10),
             .foregroundColor: UIColor.gray
         ])
+    }
+
+    //MARK: Ячейки переиспользуются, поэтому играющую надо узнавать по сообщению, а не
+    // по самой ячейке: без этого прогресс с проигрываемого голосового всплывал бы на
+    // чужом при прокрутке.
+    func configureAudioCell(_ cell: AudioMessageCell, message: MessageType) {
+        cell.playButton.isSelected = VoicePlayer.shared.playingMessageId == message.messageId
     }
 
     func configureAvatarView(_ avatarView: AvatarView, for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {

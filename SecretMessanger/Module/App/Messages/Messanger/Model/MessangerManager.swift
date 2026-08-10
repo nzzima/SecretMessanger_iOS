@@ -201,6 +201,118 @@ class MessangerManager {
         conversationListener = nil
     }
 
+    //MARK: Голосовое пишется в два документа: звук — в подколлекцию `audio`,
+    // сообщение — туда же, куда текстовые. Разделение не косметическое: слушатель
+    // чата держит последние 50 сообщений и перечитывает их при каждом изменении, так
+    // что запись внутри сообщения означала бы мегабайты на каждое открытие чата.
+    //
+    // Звук пишется первым: сообщение появляется у собеседника мгновенно через
+    // слушателя, и к этому моменту играть уже должно быть что.
+    func sendVoice(url: URL, duration: TimeInterval, chat: Chat, completion: @escaping (Error?) -> Void) {
+        guard let raw = try? Data(contentsOf: url) else {
+            completion(VoiceRecorderError.failed)
+            return
+        }
+
+        guard let key = crypto.currentKey(for: chat) else {
+            completion(ConversationCryptoError.noKey)
+            return
+        }
+
+        guard let sealed = try? CryptoBox.seal(raw, with: key),
+              let preview = crypto.encrypt(MessangerManager.voicePreview, chat: chat) else {
+            completion(ConversationCryptoError.noKey)
+            return
+        }
+
+        let messageId = UUID().uuidString
+        let date = Date()
+        let conversation = ref.collection(.conversation).document(chat.id)
+
+        conversation.collection(.audio).document(messageId).setData([
+            "senderId": chat.selfId,
+            "data": sealed
+        ]) { [weak self] err in
+            guard let self, err == nil else {
+                completion(err)
+                return
+            }
+
+            //MARK: Превью в списке чатов — обычный текст, зашифрованный тем же ключом.
+            // Без него диалог с одними голосовыми пропал бы из «Чатов»: `Conversation`
+            // отбрасывает шапку с пустым `lastMessage`.
+            conversation.setData([
+                "logins": self.logins(of: chat),
+                "lastMessage": preview,
+                "lastEnc": 1,
+                "lastV": chat.keyVersion,
+                "date": date
+            ], merge: true) { err in
+                guard err == nil else {
+                    completion(err)
+                    return
+                }
+
+                conversation.collection(.messages).document(messageId).setData([
+                    "senderId": chat.selfId,
+                    "message": preview,
+                    "type": "audio",
+                    "duration": duration,
+                    "enc": 1,
+                    "v": chat.keyVersion,
+                    "date": date
+                ]) { err in
+                    completion(err)
+                }
+            }
+        }
+    }
+
+    static let voicePreview = "🎤 Голосовое сообщение"
+
+    //MARK: Звук скачивается по нажатию «играть» и кладётся расшифрованным во временную
+    // папку: `AVAudioPlayer` умеет играть из файла, а не из памяти. Уже скачанное
+    // второй раз не тянем.
+    func loadVoice(messageId: String, chat: Chat, completion: @escaping (Result<URL, Error>) -> Void) {
+        let url = Voice.cacheURL(messageId: messageId)
+
+        guard !Voice.isCached(messageId: messageId) else {
+            completion(.success(url))
+            return
+        }
+
+        ref
+            .collection(.conversation)
+            .document(chat.id)
+            .collection(.audio)
+            .document(messageId)
+            .getDocument { [weak self] snap, err in
+                if let err {
+                    completion(.failure(err))
+                    return
+                }
+
+                guard let self,
+                      let sealed = snap?.data()?["data"] as? Data else {
+                    completion(.failure(ConversationCryptoError.noKey))
+                    return
+                }
+
+                guard let key = self.crypto.key(for: chat, version: chat.keyVersion),
+                      let raw = try? CryptoBox.open(sealed, with: key) else {
+                    completion(.failure(ConversationCryptoError.noKey))
+                    return
+                }
+
+                do {
+                    try raw.write(to: url)
+                    completion(.success(url))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+    }
+
     func send(text: String, chat: Chat) {
         let date = Date()
         let conversation = ref.collection(.conversation).document(chat.id)

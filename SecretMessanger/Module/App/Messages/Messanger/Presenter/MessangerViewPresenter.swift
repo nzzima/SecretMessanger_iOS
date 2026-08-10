@@ -13,7 +13,13 @@ protocol MessangerViewPresenterProtocol: AnyObject {
     var isGroup: Bool { get }
     var selfSender: Sender { get }
     var messages: [Message] { get }
+    var isRecording: Bool { get }
+    var recordingTime: TimeInterval { get }
     @discardableResult func sendMessage(text: String) -> Bool
+    func startRecording()
+    func finishRecording()
+    func cancelRecording()
+    func playVoice(messageId: String, play: @escaping (URL) -> Void)
 }
 
 class MessangerViewPresenter: MessangerViewPresenterProtocol {
@@ -21,6 +27,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     weak var view: MessangerViewProtocol?
 
     private let messangerManager = MessangerManager()
+    private let recorder = VoiceRecorder()
 
     //MARK: Состав чата больше не константа: создатель может добавить или убрать
     // участника, пока экран открыт. Отсюда `var` и слушатель на шапку.
@@ -36,9 +43,22 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         Sender(senderId: chat.selfId, displayName: chat.login(for: chat.selfId))
     }
 
+    var isRecording: Bool { recorder.isRecording }
+    var recordingTime: TimeInterval { recorder.currentTime }
+
     required init(view: MessangerViewProtocol?, chat: Chat) {
         self.view = view
         self.chat = chat
+
+        //MARK: Потолок по длительности срабатывает сам, без участия экрана, поэтому
+        // об окончании записи надо сообщить — иначе интерфейс остался бы в режиме
+        // записи, которой уже нет.
+        recorder.onAutoStop = { [weak self] url, duration in
+            DispatchQueue.main.async {
+                self?.view?.recordingStopped()
+                self?.upload(url: url, duration: duration)
+            }
+        }
 
         start()
     }
@@ -130,5 +150,69 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         messangerManager.send(text: text, chat: chat)
 
         return true
+    }
+
+    // MARK: - Голосовые
+
+    func startRecording() {
+        //MARK: Без ключа шифровать запись нечем — говорим об этом до того, как
+        // человек наговорит две минуты впустую.
+        guard !chat.isEncrypted || ConversationCrypto.shared.currentKey(for: chat) != nil else {
+            view?.showError(ConversationCryptoError.noKey.localizedDescription)
+            return
+        }
+
+        VoicePlayer.shared.stop()
+
+        recorder.start { [weak self] err in
+            guard let err else {
+                self?.view?.recordingStarted()
+                return
+            }
+
+            self?.view?.showError(err.localizedDescription)
+        }
+    }
+
+    func finishRecording() {
+        view?.recordingStopped()
+
+        //MARK: `nil` здесь — запись короче секунды, то есть промах по кнопке. Ругаться
+        // на это незачем, отправлять тоже.
+        guard let recorded = recorder.stop() else { return }
+
+        upload(url: recorded.url, duration: recorded.duration)
+    }
+
+    func cancelRecording() {
+        recorder.cancel()
+        view?.recordingStopped()
+    }
+
+    private func upload(url: URL, duration: TimeInterval) {
+        messangerManager.sendVoice(url: url, duration: duration, chat: chat) { [weak self] err in
+            //MARK: Файл убираем в любом случае: отправился он или нет, во временной
+            // папке ему делать нечего — звук уже либо в базе, либо потерян.
+            try? FileManager.default.removeItem(at: url)
+
+            guard let err else { return }
+
+            DispatchQueue.main.async {
+                self?.view?.showError(err.localizedDescription)
+            }
+        }
+    }
+
+    func playVoice(messageId: String, play: @escaping (URL) -> Void) {
+        messangerManager.loadVoice(messageId: messageId, chat: chat) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let url):
+                    play(url)
+                case .failure(let err):
+                    self?.view?.showError(err.localizedDescription)
+                }
+            }
+        }
     }
 }

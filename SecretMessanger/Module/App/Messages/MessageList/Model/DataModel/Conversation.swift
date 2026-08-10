@@ -24,11 +24,23 @@ struct Conversation {
     init?(id: String, selfId: String, data: [String: Any]) {
         guard let chat = Chat(id: id, selfId: selfId, data: data) else { return nil }
 
-        let lastMessage = data["lastMessage"] as? String ?? ""
-        guard !lastMessage.isEmpty else { return nil }
+        let stored = data["lastMessage"] as? String ?? ""
+        guard !stored.isEmpty else { return nil }
 
         self.chat = chat
-        self.lastMessage = lastMessage
+
+        //MARK: Превью в списке — тот же шифротекст, что и сообщение, и расшифровывается
+        // тем же ключом. Если бы шапка хранила его открытым, последняя реплика каждого
+        // диалога лежала бы в базе читаемой, и шифровать сообщения было бы незачем.
+        if (data["lastEnc"] as? Int ?? 0) == 1 {
+            let version = data["lastV"] as? Int ?? chat.keyVersion
+
+            self.lastMessage = ConversationCrypto.shared.decrypt(stored, chat: chat, version: version)
+                ?? "🔒 Сообщение не расшифровано"
+        } else {
+            self.lastMessage = stored
+        }
+
         self.date = (data["date"] as? Timestamp)?.dateValue() ?? Date()
     }
 }

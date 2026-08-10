@@ -15,19 +15,39 @@ struct Message: MessageType {
     var sentDate: Date
     var kind: MessageKind
 
+    //MARK: То, что лежит в документе как есть. Расшифровывает презентер — он один
+    // знает диалог, а с ним и ключ; модель к Keychain не ходит.
+    var body: String
+    var isEncrypted: Bool
+    var keyVersion: Int
+
     init(sender: SenderType, messageId: String, sentDate: Date, kind: MessageKind) {
         self.sender = sender
         self.messageId = messageId
         self.sentDate = sentDate
         self.kind = kind
+        self.body = ""
+        self.isEncrypted = false
+        self.keyVersion = 0
     }
 
     //MARK: В документе лежит только senderId — имя подставляет презентер, он один
-    // знает обоих собеседников. Здесь имя пустое намеренно.
+    // знает состав диалога. Здесь имя пустое намеренно.
     init(messageId: String, data: [String: Any]) {
         self.messageId = messageId
         self.sender = Sender(senderId: data["senderId"] as? String ?? "", displayName: "")
-        self.kind = .text(data["message"] as? String ?? "")
         self.sentDate = (data["date"] as? Timestamp)?.dateValue() ?? Date()
+
+        //MARK: Флаг `enc` разделяет переписку до шифрования и после. Сообщения без
+        // него читаются как раньше — сносить историю ради перехода не пришлось.
+        self.body = data["message"] as? String ?? ""
+        self.isEncrypted = (data["enc"] as? Int ?? 0) == 1
+        self.keyVersion = data["v"] as? Int ?? 0
+        self.kind = .text(self.body)
+    }
+
+    //MARK: Копия для показа: имя отправителя и уже расшифрованный текст.
+    func displayed(sender: SenderType, text: String) -> Message {
+        Message(sender: sender, messageId: messageId, sentDate: sentDate, kind: .text(text))
     }
 }

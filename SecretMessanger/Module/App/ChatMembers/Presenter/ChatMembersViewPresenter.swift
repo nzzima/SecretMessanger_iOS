@@ -28,7 +28,13 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
     weak var view: ChatMembersViewProtocol?
 
     private let chatMembersManager = ChatMembersManager()
+    private let crypto = ConversationCrypto.shared
     private var chat: Chat
+
+    //MARK: Открытые ключи участников нужны в момент правки состава: добавленному —
+    // запечатать ключ диалога, оставшимся — новый ключ после ротации. Загружаются
+    // один раз при открытии экрана, чтобы не бегать в базу из обработчика свайпа.
+    private var knownPublicKeys: [String: String] = [:]
 
     //MARK: Ниже трёх участников группу опускать нельзя. Дело не в вкусе: у
     // переписки на двоих id детерминированный — пара uid по алфавиту, — и группа с
@@ -54,6 +60,21 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
         self.chat = chat
 
         observe()
+        loadPublicKeys()
+    }
+
+    private func loadPublicKeys() {
+        PublicKeyDirectory.keys(for: chat.members) { [weak self] keys in
+            guard let self else { return }
+
+            self.knownPublicKeys = keys
+
+            //MARK: Свой ключ берём из Keychain: в профиле он тоже есть, но источник
+            // истины здесь, а не там.
+            if let mine = PublicKeyDirectory.own(uid: self.chat.selfId) {
+                self.knownPublicKeys[self.chat.selfId] = mine
+            }
+        }
     }
 
     deinit {
@@ -91,10 +112,37 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
             return
         }
 
+        let remaining = chat.members.filter { $0 != member.id }
+
         //MARK: Логин удалённого из карты не вычищаем: он ничему не мешает (название
         // и подписи собираются по составу, а не по карте) и пригодится, если
         // человека вернут обратно.
-        apply(members: chat.members.filter { $0 != member.id }, logins: chat.logins)
+        apply(members: remaining, logins: chat.logins, keys: rotatedKeys(for: remaining))
+    }
+
+    //MARK: Ротация ключа при удалении. Правила закрывают удалённому доступ к диалогу,
+    // но ключ, которым шифровались сообщения, у него на руках навсегда — без нового
+    // ключа он остался бы криптографически способен читать всё, что напишут дальше.
+    //
+    // Старые версии из шапки не убираются: без них переписка стала бы нечитаемой у
+    // тех, кто остался. Уже написанное удалённый прочтёт в любом случае — он это
+    // видел, когда был в группе.
+    private func rotatedKeys(for remaining: [String]) -> [String: Any] {
+        guard chat.isEncrypted else { return [:] }
+
+        let version = chat.keyVersion + 1
+        let publicKeys = knownPublicKeys.filter { remaining.contains($0.key) }
+
+        guard !publicKeys.isEmpty else { return [:] }
+
+        let entries = crypto.sealed(key: crypto.newKey(),
+                                    version: version,
+                                    convoId: chat.id,
+                                    for: publicKeys)
+
+        guard !entries.isEmpty else { return [:] }
+
+        return ["convoKeys": entries, "keyVersion": version]
     }
 
     func add(contacts: [ChatUser]) {
@@ -102,19 +150,31 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
 
         var members = chat.members
         var logins = chat.logins
+        var added: [String: String] = [:]
 
         contacts.forEach {
             guard !members.contains($0.id) else { return }
 
             members.append($0.id)
             logins[$0.id] = $0.login
+
+            if !$0.publicKey.isEmpty {
+                added[$0.id] = $0.publicKey
+                knownPublicKeys[$0.id] = $0.publicKey
+            }
         }
 
-        apply(members: members, logins: logins)
+        //MARK: Новичку отдаём все версии ключа: правила и так дают ему прочитать всю
+        // историю, а без старых ключей он увидел бы вместо неё стену нерасшифрованного.
+        let keys = chat.isEncrypted && !added.isEmpty
+            ? ["convoKeys": crypto.sealedAllVersions(chat: chat, for: added)]
+            : [:]
+
+        apply(members: members, logins: logins, keys: keys)
     }
 
-    private func apply(members: [String], logins: [String: String]) {
-        chatMembersManager.update(chat: chat, members: members, logins: logins) { [weak self] err in
+    private func apply(members: [String], logins: [String: String], keys: [String: Any]) {
+        chatMembersManager.update(chat: chat, members: members, logins: logins, keys: keys) { [weak self] err in
             guard let err else { return }
 
             DispatchQueue.main.async {

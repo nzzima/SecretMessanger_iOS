@@ -19,6 +19,11 @@ class TabBarViewPresenter: TabBarViewPresenterProtocol {
     required init(view: any TabBarViewProtocol) {
         self.view = view
         setupControllers()
+
+        //MARK: Единственная точка, через которую приложение входит в рабочее
+        // состояние — после биометрии, после входа и после регистрации. Здесь и
+        // проверяем, что открытый ключ этого устройства опубликован.
+        IdentityPublisher.publishIfNeeded()
     }
     
     private func setupControllers() {

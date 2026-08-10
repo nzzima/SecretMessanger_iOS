@@ -95,6 +95,15 @@ service cloud.firestore {
         return request.resource.data.users == resource.data.users;
       }
 
+      // Ключи диалога раздаёт тот же, кто правит состав, — иначе участник мог бы
+      // подменить чужую запись и оставить человека с нечитаемой перепиской. Поле
+      // называется `convoKeys`, а не `keys`, намеренно: `keys()` — метод карты в
+      // самих правилах, и поле с этим именем читалось бы неоднозначно.
+      function keysUnchanged() {
+        return request.resource.data.get('convoKeys', {}) == resource.data.get('convoKeys', {})
+               && request.resource.data.get('keyVersion', 0) == resource.data.get('keyVersion', 0);
+      }
+
       // Читаем по массиву `users`: запрос экрана «Чаты»
       // (`whereField("users", arrayContains: uid)`) ровно этому условию и
       // соответствует, поэтому список собирается, а чужие диалоги не отдаются.
@@ -110,7 +119,8 @@ service cloud.firestore {
       allow update: if isMember()
                     && joiningAsMember()
                     && ownerUnchanged()
-                    && (membersUnchanged() || isOwner());
+                    && (membersUnchanged() || isOwner())
+                    && (keysUnchanged() || isOwner());
       allow delete: if false;
 
       // Сообщения.

@@ -95,13 +95,20 @@ class RegistrationManager {
     private func setProfile(uid: String, login: String, completion: @escaping (Error?) -> Void) {
         //MARK: Почта сюда не пишется — профили читает любой вошедший, а адрес и так
         // хранится в Firebase Auth. См. комментарий в AuthenticationManager.
+        //MARK: Пара ключей заводится здесь же, при первом появлении аккаунта: без
+        // опубликованного открытого ключа собеседники не смогут запечатать для него
+        // ключ диалога, и первый же чат оказался бы нечитаемым.
+        let publicKey = KeyStore.identityKey(for: uid)?
+            .publicKey.rawRepresentation.base64EncodedString() ?? ""
+
         ref
             .collection(.users)
             .document(uid)
             .setData([
                 "login": login,
                 "name": login,
-                "someInfo": ""
+                "someInfo": "",
+                "publicKey": publicKey
             ]) { err in
                 completion(err)
             }

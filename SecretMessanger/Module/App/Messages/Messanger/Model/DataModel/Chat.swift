@@ -17,6 +17,22 @@ struct Chat {
     let owner: String
     let selfId: String
 
+    //MARK: Ключ диалога, запечатанный для каждого участника отдельно, и номер его
+    // текущей версии — см. ConversationCrypto. Сам ключ отсюда не достать: чтобы
+    // открыть свою запись, нужен постоянный ключ из Keychain.
+    let convoKeys: [String: String]
+    let keyVersion: Int
+
+    //MARK: Открытые ключи участников. Заполнены только на пути «создаём новый чат»,
+    // где они пришли вместе с выбранными контактами: создателю нужно тут же
+    // запечатать для них ключ диалога. У чата, прочитанного из Firestore, здесь
+    // пусто — открытые ключи живут в `users`, а не в шапке диалога.
+    let knownPublicKeys: [String: String]
+
+    var isEncrypted: Bool {
+        !convoKeys.isEmpty
+    }
+
     var isGroup: Bool {
         members.count > 2
     }
@@ -56,7 +72,15 @@ extension Chat {
     //MARK: Новый чат из выбранных контактов. Создатель — тот, кто выбирал.
     init(selfId: String, selfLogin: String, contacts: [ChatUser]) {
         var logins = [selfId: selfLogin]
-        contacts.forEach { logins[$0.id] = $0.login }
+        var publicKeys: [String: String] = [:]
+
+        contacts.forEach {
+            logins[$0.id] = $0.login
+
+            if !$0.publicKey.isEmpty {
+                publicKeys[$0.id] = $0.publicKey
+            }
+        }
 
         let members = [selfId] + contacts.map { $0.id }
 
@@ -65,6 +89,9 @@ extension Chat {
         self.logins = logins
         self.owner = selfId
         self.selfId = selfId
+        self.convoKeys = [:]
+        self.keyVersion = 0
+        self.knownPublicKeys = publicKeys
     }
 
     //MARK: Существующий чат из документа Firestore.
@@ -76,5 +103,8 @@ extension Chat {
         self.logins = data["logins"] as? [String: String] ?? [:]
         self.owner = data["owner"] as? String ?? ""
         self.selfId = selfId
+        self.convoKeys = data["convoKeys"] as? [String: String] ?? [:]
+        self.keyVersion = data["keyVersion"] as? Int ?? 0
+        self.knownPublicKeys = [:]
     }
 }

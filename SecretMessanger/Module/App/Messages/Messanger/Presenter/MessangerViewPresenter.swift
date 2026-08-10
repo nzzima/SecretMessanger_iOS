@@ -87,13 +87,22 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
     //MARK: Отправитель в базе хранится одним лишь id — имя подставляется из состава
     // чата, он же лежит в шапке диалога. Работает и для группы, а не только для пары.
+    // Здесь же расшифровка: ключ приезжает в шапке, а она у презентера под рукой.
     private func rebuildMessages() {
         messages = incoming.map { message in
-            Message(sender: sender(for: message.sender.senderId),
-                    messageId: message.messageId,
-                    sentDate: message.sentDate,
-                    kind: message.kind)
+            message.displayed(sender: sender(for: message.sender.senderId),
+                              text: text(of: message))
         }
+    }
+
+    //MARK: Нерасшифрованное сообщение — не сбой, который можно замолчать: так
+    // выглядит переписка, ключ от которой остался на другом устройстве. Показываем
+    // это прямо, а не пустым баблом.
+    private func text(of message: Message) -> String {
+        guard message.isEncrypted else { return message.body }
+
+        return ConversationCrypto.shared.decrypt(message.body, chat: chat, version: message.keyVersion)
+            ?? "🔒 Сообщение не расшифровано"
     }
 
     private func sender(for id: String) -> Sender {

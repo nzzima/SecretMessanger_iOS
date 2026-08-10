@@ -43,14 +43,21 @@ class ChatMembersManager {
     //MARK: Массив пишется целиком, а не `arrayUnion`: правила сравнивают состав до
     // и после, и явный список — единственный способ точно знать, что именно они
     // увидят. Состав при этом свежий — он приходит слушателем выше.
-    func update(chat: Chat, members: [String], logins: [String: String], completion: @escaping (Error?) -> Void) {
+    func update(chat: Chat,
+                members: [String],
+                logins: [String: String],
+                keys: [String: Any] = [:],
+                completion: @escaping (Error?) -> Void) {
+        var payload: [String: Any] = [
+            "users": members,
+            "logins": logins
+        ]
+        payload.merge(keys) { _, new in new }
+
         ref
             .collection(.conversation)
             .document(chat.id)
-            .setData([
-                "users": members,
-                "logins": logins
-            ], merge: true) { err in
+            .setData(payload, merge: true) { err in
                 completion(err)
             }
     }

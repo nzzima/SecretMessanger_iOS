@@ -97,10 +97,20 @@ class AuthenticationManager {
                     // устроен список контактов, — а `email` при этом не нужен ни одному
                     // экрану: `ProfileInfo` его намеренно не показывает. В Firestore он
                     // лежал бы открытым без всякой пользы; адрес и так есть в Auth.
+                    //MARK: Открытый ключ публикуется при каждом входе, потому что
+                    // источник истины — Keychain, а не Firestore: на новом устройстве
+                    // без iCloud Keychain пара будет другой, и профиль обязан
+                    // показывать ту, которой человек действительно владеет. Иначе
+                    // собеседники продолжали бы запечатывать ключи диалогов для
+                    // половины, которой у него больше нет.
+                    let publicKey = KeyStore.identityKey(for: user.uid)?
+                        .publicKey.rawRepresentation.base64EncodedString() ?? field("publicKey")
+
                     let profile: [String: Any] = [
                         "login": login,
                         "name": name.isEmpty ? login : name,
-                        "someInfo": field("someInfo")
+                        "someInfo": field("someInfo"),
+                        "publicKey": publicKey
                     ]
 
                     document.setData(profile, merge: true) { err in

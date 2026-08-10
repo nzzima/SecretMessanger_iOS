@@ -12,6 +12,7 @@ import InputBarAccessoryView
 protocol MessangerViewProtocol: AnyObject {
     func reloadCollection()
     func reloadTitle()
+    func showError(_ message: String)
 }
 
 class MessangerView: MessagesViewController, MessangerViewProtocol {
@@ -107,6 +108,10 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     func reloadTitle() {
         title = presenter.title
     }
+
+    func showError(_ message: String) {
+        showErrorAlert(message)
+    }
 }
 
 extension MessangerView: MessagesDataSource {
@@ -178,8 +183,11 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
 
 extension MessangerView: InputBarAccessoryViewDelegate {
 
+    //MARK: Поле очищается только если сообщение приняли к отправке. Иначе набранное
+    // пропадало бы вместе с неудачей — а человеку его перенабирать.
     func inputBar(_ inputBar: InputBarAccessoryView, didPressSendButtonWith text: String) {
-        presenter.sendMessage(text: text)
+        guard presenter.sendMessage(text: text) else { return }
+
         inputBar.inputTextView.text = ""
     }
 }

@@ -13,7 +13,7 @@ protocol MessangerViewPresenterProtocol: AnyObject {
     var isGroup: Bool { get }
     var selfSender: Sender { get }
     var messages: [Message] { get }
-    func sendMessage(text: String)
+    @discardableResult func sendMessage(text: String) -> Bool
 }
 
 class MessangerViewPresenter: MessangerViewPresenterProtocol {
@@ -109,13 +109,26 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         Sender(senderId: id, displayName: chat.login(for: id))
     }
 
-    func sendMessage(text: String) {
+    //MARK: Возвращает, приняли ли сообщение к отправке: по этому ответу экран решает,
+    // очищать поле ввода или оставить набранное человеку.
+    @discardableResult
+    func sendMessage(text: String) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else { return false }
+
+        //MARK: Без ключа диалога шифровать нечем. Молчать тут нельзя: набранное
+        // просто исчезало бы из поля, а в переписке не появлялось — тот самый отказ
+        // без реакции, из-за которого экран входа когда-то выглядел сломанным.
+        guard !chat.isEncrypted || ConversationCrypto.shared.currentKey(for: chat) != nil else {
+            view?.showError("Ключ этого диалога вам ещё не выдан — сообщение не отправлено. Ключ появится, когда создатель чата откроет его.")
+            return false
+        }
 
         //MARK: В список локально не добавляем: Firestore отдаёт собственную запись
         // обратно через слушателя сразу, ещё до подтверждения сервером. Ручная
         // вставка продублировала бы сообщение.
         messangerManager.send(text: text, chat: chat)
+
+        return true
     }
 }

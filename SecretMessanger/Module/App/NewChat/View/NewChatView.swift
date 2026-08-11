@@ -15,8 +15,6 @@ class NewChatView: UIViewController, NewChatViewProtocol {
 
     var presenter: NewChatViewPresenterProtocol!
 
-    let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-
     lazy var tableView: UITableView = {
         $0.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         $0.dataSource = self
@@ -39,7 +37,6 @@ class NewChatView: UIViewController, NewChatViewProtocol {
 
         view.backgroundColor = .bgMain
         navigationItem.title = presenter.isAddingMembers ? "Добавить в группу" : "Новый чат"
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
         navigationItem.rightBarButtonItem = createButton
 
         view.addSubviews(tableView)

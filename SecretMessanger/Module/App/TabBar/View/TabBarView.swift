@@ -18,9 +18,11 @@ class TabBarView: UITabBarController, TabBarViewProtocol {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        tabBar.barTintColor = .white
+
+        //MARK: Фон таб-бара теперь задаёт `BarAppearance` — он один умеет покрасить и
+        // прокрученное состояние, из-за которого панель белела. Здесь остаётся цвет
+        // выбранной вкладки: это выбор экрана, а не общая подложка.
         tabBar.tintColor = .orange
-        tabBar.backgroundColor = .tabBar
     }
     
     func setControllers(views: [UIViewController]) {

@@ -17,8 +17,6 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
 
     var presenter: UserProfileViewPresenterProtocol!
 
-    let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-
     //MARK: Только публичные поля. Почта и идентификатор сюда не выносятся —
     // см. комментарий в ProfileInfo.
     private var rows: [(title: String, value: String)] {
@@ -70,7 +68,6 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
 
         view.backgroundColor = .bgMain
         navigationItem.title = presenter.title
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: rigthBarButton)
 
         view.addSubviews(imageView, tableView)

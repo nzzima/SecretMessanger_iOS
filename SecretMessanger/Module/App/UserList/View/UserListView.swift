@@ -16,8 +16,6 @@ protocol UserListViewProtocol: AnyObject {
 class UserListView: UIViewController, UserListViewProtocol {
     var presenter: UserListViewPresenterProtocol!
     
-    let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-    
     //MARK: Про `frame: view.bounds` в lazy-свойстве — см. подробный комментарий в
     // MessageListView: он приводил к созданию двух таблиц, и список переставал
     // обновляться после первой отрисовки.
@@ -43,7 +41,6 @@ class UserListView: UIViewController, UserListViewProtocol {
         super.viewDidLoad()
         view.backgroundColor = .bgMain
         navigationItem.title = "Контакты"
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
         view.addSubviews(tableView)

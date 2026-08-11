@@ -16,8 +16,6 @@ class MessageListView: UIViewController, MessageListViewProtocol {
 
     var presenter: MessageListViewPresenterProtocol!
 
-    let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-
     //MARK: `UITableView(frame: view.bounds)` здесь стоять не должно: обращение к
     // `view.bounds` внутри инициализатора принудительно грузит view, а `viewDidLoad`
     // в этот момент снова обращается к `tableView`. Пока внешний инициализатор не
@@ -50,7 +48,6 @@ class MessageListView: UIViewController, MessageListViewProtocol {
 
         view.backgroundColor = .bgMain
         navigationItem.title = "Чаты"
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
 
         view.addSubviews(tableView, emptyLabel)
 

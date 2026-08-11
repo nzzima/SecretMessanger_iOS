@@ -22,8 +22,6 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
     var presenter: MessangerViewPresenterProtocol!
 
-    private let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-
     private var recordingTimer: Timer?
 
     //MARK: Микрофон стоит слева от поля, чтобы не спорить с отправкой справа. Запись
@@ -68,7 +66,6 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         super.viewDidLoad()
 
         title = presenter.title
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
         showMessageTimestampOnSwipeLeft = true
 
         //MARK: Кнопка только в группе. Диалог на двоих третьим не дополняется: его

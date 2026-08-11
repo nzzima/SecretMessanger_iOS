@@ -17,8 +17,6 @@ class ChatMembersView: UIViewController, ChatMembersViewProtocol {
 
     var presenter: ChatMembersViewPresenterProtocol!
 
-    private let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-
     //MARK: Про `frame: view.bounds` в lazy-свойстве — см. подробный комментарий в
     // MessageListView: он приводил к созданию двух таблиц, и список переставал
     // обновляться после первой отрисовки.
@@ -63,7 +61,6 @@ class ChatMembersView: UIViewController, ChatMembersViewProtocol {
 
         view.backgroundColor = .bgMain
         navigationItem.title = "Участники"
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
 
         //MARK: Кнопка только у создателя. Остальным экран остаётся как справка —
         // кто вообще в группе; менять состав им не даст и правило Firestore.

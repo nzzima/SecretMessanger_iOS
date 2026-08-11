@@ -16,8 +16,6 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     
     var presenter: ProfileViewPresenterProtocol!
     
-    let textAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-    
     let titleInfoCell = ["Идентификатор", "Логин", "Имя", "Заметка"]
     
     lazy var imageView: UIImageView = {
@@ -62,7 +60,6 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         navigationItem.title = "Профиль"
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
-        navigationController?.navigationBar.titleTextAttributes = textAttributes
         view.addSubviews(imageView, tableView)
 
         setConstraints()

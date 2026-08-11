@@ -15,7 +15,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         FirebaseApp.configure()
-        // Override point for customization after application launch.
+
+        //MARK: Прокси-настройки применяются к панелям, созданным ПОСЛЕ вызова, поэтому
+        // красим до того, как соберётся первый экран.
+        BarAppearance.apply()
+
         return true
     }
 

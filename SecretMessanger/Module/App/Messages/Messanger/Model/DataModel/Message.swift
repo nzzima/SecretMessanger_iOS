@@ -33,6 +33,11 @@ struct Message: MessageType {
     var isPhoto: Bool
     var pixels: CGSize
 
+    //MARK: Геопозиция выбивается из этого ряда: у неё нет ни байтов, ни подколлекции —
+    // две координаты лежат в самом сообщении, на месте текста, и шифруются как текст.
+    // Поэтому и разбираются они уже после расшифровки, а не здесь.
+    var isLocation: Bool
+
     //MARK: В документе лежит только senderId — имя подставляет презентер, он один
     // знает состав диалога. Здесь имя пустое намеренно.
     init(messageId: String, data: [String: Any]) {
@@ -54,12 +59,14 @@ struct Message: MessageType {
         self.pixels = CGSize(width: data["width"] as? Double ?? 0,
                              height: data["height"] as? Double ?? 0)
 
-        self.kind = Message.kind(text: self.body,
-                                 messageId: messageId,
-                                 isVoice: self.isVoice,
-                                 duration: self.duration,
-                                 isPhoto: self.isPhoto,
-                                 pixels: self.pixels)
+        self.isLocation = type == "location"
+
+        //MARK: Вид присваивается дважды: сначала заглушкой, потом по-настоящему. Метод,
+        // который его собирает, читает поля сообщения, а обратиться к себе можно только
+        // когда проинициализировано всё, включая `kind`. Альтернатива — тащить в него
+        // шесть параметров и дописывать седьмой на каждый новый вид сообщения.
+        self.kind = .text(self.body)
+        self.kind = cellKind(text: self.body)
     }
 
     //MARK: Копия для показа: имя отправителя и уже расшифрованный текст. У голосового и
@@ -76,30 +83,32 @@ struct Message: MessageType {
         var copy = self
 
         copy.sender = sender
-        copy.kind = Message.kind(text: text,
-                                 messageId: messageId,
-                                 isVoice: isVoice,
-                                 duration: duration,
-                                 isPhoto: isPhoto,
-                                 pixels: pixels)
+        copy.kind = cellKind(text: text)
 
         return copy
     }
 
     //MARK: Вид ячейки собирается в одном месте, а не в каждом инициализаторе: видов
-    // теперь три, и разъехаться им ничего не мешало бы.
-    private static func kind(text: String,
-                             messageId: String,
-                             isVoice: Bool,
-                             duration: Float,
-                             isPhoto: Bool,
-                             pixels: CGSize) -> MessageKind {
+    // теперь четыре, и разъехаться им ничего не мешало бы.
+    private func cellKind(text: String) -> MessageKind {
         if isVoice {
             return .audio(Voice(messageId: messageId, duration: duration))
         }
 
         if isPhoto {
             return .photo(Photo(messageId: messageId, pixels: pixels))
+        }
+
+        //MARK: Координаты разбираются из уже расшифрованного текста, поэтому настоящая
+        // точка получается только в `displayed`. Не разобрались — показываем текст как
+        // есть: на этом месте обычно лежит «🔒 Сообщение не расшифровано», и это
+        // честнее пустой карты посреди океана.
+        if isLocation {
+            if let place = Place(payload: text) {
+                return .location(place)
+            }
+
+            return .text(text)
         }
 
         return .text(text)

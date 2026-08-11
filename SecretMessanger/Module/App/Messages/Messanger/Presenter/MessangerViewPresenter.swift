@@ -22,6 +22,7 @@ protocol MessangerViewPresenterProtocol: AnyObject {
     func playVoice(messageId: String, play: @escaping (URL) -> Void)
     func sendPhoto(_ image: UIImage)
     func loadPhoto(messageId: String, completion: @escaping (UIImage?) -> Void)
+    func shareLocation()
 }
 
 class MessangerViewPresenter: MessangerViewPresenterProtocol {
@@ -30,6 +31,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
     private let messangerManager = MessangerManager()
     private let recorder = VoiceRecorder()
+    private let locations = LocationProvider()
 
     //MARK: Состав чата больше не константа: создатель может добавить или убрать
     // участника, пока экран открыт. Отсюда `var` и слушатель на шапку.
@@ -242,6 +244,36 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
             DispatchQueue.main.async {
                 self?.view?.showError(err.localizedDescription)
+            }
+        }
+    }
+
+    // MARK: - Геопозиция
+
+    //MARK: Порядок такой: сначала ключ, потом координаты. Спрашивать разрешение и ловить
+    // спутники ради сообщения, которое всё равно нечем зашифровать, — только злить.
+    func shareLocation() {
+        guard ConversationCrypto.shared.currentKey(for: chat) != nil else {
+            view?.showError(ConversationCryptoError.noKey.localizedDescription)
+            return
+        }
+
+        locations.current { [weak self] result in
+            guard let self else { return }
+
+            switch result {
+            case .success(let location):
+                self.messangerManager.sendLocation(location, chat: self.chat) { err in
+                    guard let err else { return }
+
+                    DispatchQueue.main.async {
+                        self.view?.showError(err.localizedDescription)
+                    }
+                }
+            case .failure(let err):
+                DispatchQueue.main.async {
+                    self.view?.showError(err.localizedDescription)
+                }
             }
         }
     }

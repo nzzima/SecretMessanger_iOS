@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import MapKit
 import PhotosUI
 import MessageKit
 import InputBarAccessoryView
@@ -24,9 +25,9 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
     private var recordingTimer: Timer?
 
-    //MARK: Микрофон стоит слева от поля, чтобы не спорить с отправкой справа. Запись
-    // идёт по удержанию: у голосового нет состояния «набрано, но не отправлено», и
-    // отдельная кнопка «стоп» ему не нужна.
+    //MARK: Микрофон стоит справа, рядом с отправкой: и то и другое — «отправить сейчас»,
+    // а слева живут вложения. Запись идёт по удержанию: у голосового нет состояния
+    // «набрано, но не отправлено», и отдельная кнопка «стоп» ему не нужна.
     private lazy var micButton: InputBarButtonItem = {
         $0.image = UIImage(systemName: "mic.fill")
         $0.tintColor = .systemBlue
@@ -37,13 +38,22 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
     private lazy var micGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleMic(_:)))
 
-    //MARK: Вложение — обычным нажатием, в отличие от микрофона: выбор снимка это
-    // отдельный экран, и удержание тут было бы лишним обрядом.
-    private lazy var photoButton: InputBarButtonItem = {
-        $0.image = UIImage(systemName: "photo")
+    //MARK: Скрепка вместо ряда кнопок по одной на каждый вид вложения: их уже два, и
+    // панель ввода не резиновая. Меню открывается по нажатию (`showsMenuAsPrimaryAction`),
+    // без удержания — держать приходится микрофон, и путать эти два жеста ни к чему.
+    private lazy var attachButton: InputBarButtonItem = {
+        $0.image = UIImage(systemName: "paperclip")
         $0.tintColor = .systemBlue
         $0.setSize(CGSize(width: 36, height: 36), animated: false)
-        $0.onTouchUpInside { [weak self] _ in self?.pickPhoto() }
+        $0.showsMenuAsPrimaryAction = true
+        $0.menu = UIMenu(children: [
+            UIAction(title: "Фото", image: UIImage(systemName: "photo")) { [weak self] _ in
+                self?.pickPhoto()
+            },
+            UIAction(title: "Геопозиция", image: UIImage(systemName: "mappin.and.ellipse")) { [weak self] _ in
+                self?.presenter.shareLocation()
+            }
+        ])
         return $0
     }(InputBarButtonItem())
 
@@ -137,8 +147,13 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         // цветом. Красим по текущему состоянию.
         messageInputBar.sendButton.tintColor = messageInputBar.sendButton.isEnabled ? .systemBlue : .darkGray
 
-        messageInputBar.setLeftStackViewWidthConstant(to: 76, animated: false)
-        messageInputBar.setStackViewItems([micButton, photoButton], forStack: .left, animated: false)
+        messageInputBar.setLeftStackViewWidthConstant(to: 40, animated: false)
+        messageInputBar.setStackViewItems([attachButton], forStack: .left, animated: false)
+
+        //MARK: Кнопка отправки уже стоит в правой стопке, поэтому её приходится
+        // перечислить заново: `setStackViewItems` задаёт состав целиком, а не дописывает.
+        messageInputBar.setRightStackViewWidthConstant(to: 80, animated: false)
+        messageInputBar.setStackViewItems([micButton, messageInputBar.sendButton], forStack: .right, animated: false)
 
         messageInputBar.addSubview(recordingLabel)
         recordingLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -272,6 +287,18 @@ extension MessangerView: MessageCellDelegate {
     //MARK: Во весь экран открываем только то, что уже расшифровано и лежит в памяти.
     // Пузырь с замком нажатие игнорирует: показывать нечего, а лезть за снимком второй
     // раз незачем — не открылся он не из-за связи.
+    //MARK: Карта в пузыре — картинка, по ней не проложить маршрут и не рассмотреть
+    // соседнюю улицу. Поэтому нажатие уводит в «Карты»: там точка и оказывается нужна.
+    func didTapMessage(in cell: MessageCollectionViewCell) {
+        guard let indexPath = messagesCollectionView.indexPath(for: cell),
+              case .location(let place) = presenter.messages[indexPath.section].kind else { return }
+
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: place.location.coordinate))
+        item.name = MessangerManager.locationPreview
+
+        item.openInMaps()
+    }
+
     func didTapImage(in cell: MessageCollectionViewCell) {
         guard let indexPath = messagesCollectionView.indexPath(for: cell) else { return }
 

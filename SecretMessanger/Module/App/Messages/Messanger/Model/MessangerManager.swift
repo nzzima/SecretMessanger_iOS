@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CoreLocation
 import FirebaseFirestore
 
 class MessangerManager {
@@ -362,6 +363,51 @@ class MessangerManager {
                 ]) { err in
                     completion(err)
                 }
+            }
+        }
+    }
+
+    static let locationPreview = "📍 Геопозиция"
+
+    //MARK: Геопозиция уходит двумя записями, а не тремя: подколлекции у неё нет, две
+    // координаты помещаются в само сообщение. Шифруются они как обычный текст и тем же
+    // ключом — в базу уходит шифротекст, по которому не сказать даже, что это координаты.
+    //
+    // Ключ обязателен, как у фото: положить в базу открытую точку на карте мы не станем.
+    func sendLocation(_ location: CLLocation, chat: Chat, completion: @escaping (Error?) -> Void) {
+        guard let payload = crypto.encrypt(Place.payload(for: location), chat: chat),
+              let preview = crypto.encrypt(MessangerManager.locationPreview, chat: chat) else {
+            completion(ConversationCryptoError.noKey)
+            return
+        }
+
+        let date = Date()
+        let conversation = ref.collection(.conversation).document(chat.id)
+
+        conversation.setData([
+            "logins": logins(of: chat),
+            "lastMessage": preview,
+            "lastEnc": 1,
+            "lastV": chat.keyVersion,
+            "date": date
+        ], merge: true) { err in
+            guard err == nil else {
+                completion(err)
+                return
+            }
+
+            //MARK: В превью списка «Чаты» уходит «📍 Геопозиция», а в сообщение — сами
+            // координаты: показывать в списке широту с долготой незачем, а хранить их
+            // где-то ещё, кроме сообщения, — тем более.
+            conversation.collection(.messages).document(UUID().uuidString).setData([
+                "senderId": chat.selfId,
+                "message": payload,
+                "type": "location",
+                "enc": 1,
+                "v": chat.keyVersion,
+                "date": date
+            ]) { err in
+                completion(err)
             }
         }
     }

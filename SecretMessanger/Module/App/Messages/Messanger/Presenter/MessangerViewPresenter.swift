@@ -40,6 +40,8 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     private var incoming: [Message] = []
     private(set) var messages: [Message] = []
 
+    private var isSharingLocation = false
+
     var title: String { chat.title }
     var isGroup: Bool { chat.isGroup }
 
@@ -250,32 +252,80 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
     // MARK: - Геопозиция
 
-    //MARK: Порядок такой: сначала ключ, потом координаты. Спрашивать разрешение и ловить
-    // спутники ради сообщения, которое всё равно нечем зашифровать, — только злить.
+    //MARK: Порядок такой: сначала ключ, потом доступ, потом координаты. Спрашивать
+    // разрешение и ловить спутники ради сообщения, которое всё равно нечем зашифровать, —
+    // только злить.
     func shareLocation() {
         guard ConversationCrypto.shared.currentKey(for: chat) != nil else {
             view?.showError(ConversationCryptoError.noKey.localizedDescription)
             return
         }
 
-        locations.current { [weak self] result in
+        //MARK: Пока одна отправка идёт, вторую не начинаем: на живом телефоне фикс
+        // занимает секунды, и за это время по скрепке успевают нажать ещё раз.
+        guard !isSharingLocation else { return }
+
+        isSharingLocation = true
+        view?.locationSearchStarted()
+
+        locations.ensureAccess { [weak self] result in
             guard let self else { return }
 
-            switch result {
-            case .success(let location):
-                self.messangerManager.sendLocation(location, chat: self.chat) { err in
-                    guard let err else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(true):
+                    self.locateAndSend()
+                case .success(false):
+                    //MARK: Приблизительную точку молча не отправляем. Человек мог оставить
+                    // «Точно: Выкл.» осознанно, но собеседник этого не увидит: на карте
+                    // будет обычная метка, только за километр от места. Спрашиваем до
+                    // фикса, а не после, чтобы не тратить его время впустую.
+                    self.stopSharing()
+                    self.view?.confirmApproximateLocation { [weak self] in
+                        guard let self, !self.isSharingLocation else { return }
 
-                    DispatchQueue.main.async {
-                        self.view?.showError(err.localizedDescription)
+                        self.isSharingLocation = true
+                        self.view?.locationSearchStarted()
+                        self.locateAndSend()
                     }
-                }
-            case .failure(let err):
-                DispatchQueue.main.async {
-                    self.view?.showError(err.localizedDescription)
+                case .failure(let err):
+                    self.fail(with: err)
                 }
             }
         }
+    }
+
+    private func locateAndSend() {
+        locations.locate { [weak self] result in
+            guard let self else { return }
+
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let location):
+                    self.messangerManager.sendLocation(location, chat: self.chat) { err in
+                        DispatchQueue.main.async {
+                            self.stopSharing()
+
+                            guard let err else { return }
+
+                            self.view?.showError(err.localizedDescription)
+                        }
+                    }
+                case .failure(let err):
+                    self.fail(with: err)
+                }
+            }
+        }
+    }
+
+    private func fail(with error: Error) {
+        stopSharing()
+        view?.showError(error.localizedDescription)
+    }
+
+    private func stopSharing() {
+        isSharingLocation = false
+        view?.locationSearchStopped()
     }
 
     //MARK: `nil` означает «показать замок вместо снимка». Алерт здесь не годится:

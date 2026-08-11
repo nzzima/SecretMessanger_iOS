@@ -16,6 +16,9 @@ protocol MessangerViewProtocol: AnyObject {
     func reloadTitle()
     func recordingStarted()
     func recordingStopped()
+    func locationSearchStarted()
+    func locationSearchStopped()
+    func confirmApproximateLocation(onSend: @escaping () -> Void)
     func showError(_ message: String)
 }
 
@@ -63,10 +66,11 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     private var loadingPhotos: Set<String> = []
     private var failedPhotos: Set<String> = []
 
-    //MARK: Подсказка на месте поля ввода, пока идёт запись: без неё непонятно, пишется
-    // ли вообще что-нибудь и сколько уже наговорено.
-    private lazy var recordingLabel: UILabel = {
-        $0.textColor = .systemRed
+    //MARK: Подсказка на месте поля ввода, пока идёт долгое дело: запись голосового или
+    // поиск спутников. И то и другое иначе выглядит как «нажал, и ничего не произошло» —
+    // на симуляторе геопозиция приезжает мгновенно, а на живом телефоне это секунды, в
+    // помещении и десятки секунд.
+    private lazy var statusLabel: UILabel = {
         $0.font = .systemFont(ofSize: 16)
         $0.isHidden = true
         return $0
@@ -155,12 +159,27 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         messageInputBar.setRightStackViewWidthConstant(to: 80, animated: false)
         messageInputBar.setStackViewItems([micButton, messageInputBar.sendButton], forStack: .right, animated: false)
 
-        messageInputBar.addSubview(recordingLabel)
-        recordingLabel.translatesAutoresizingMaskIntoConstraints = false
+        messageInputBar.addSubview(statusLabel)
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            recordingLabel.leadingAnchor.constraint(equalTo: messageInputBar.inputTextView.leadingAnchor, constant: 16),
-            recordingLabel.centerYAnchor.constraint(equalTo: messageInputBar.inputTextView.centerYAnchor)
+            statusLabel.leadingAnchor.constraint(equalTo: messageInputBar.inputTextView.leadingAnchor, constant: 16),
+            statusLabel.centerYAnchor.constraint(equalTo: messageInputBar.inputTextView.centerYAnchor)
         ])
+    }
+
+    //MARK: Подпись занимает место поля ввода, а не встаёт рядом: панель и без того тесная,
+    // а печатать во время записи или поиска всё равно не выйдет.
+    private func showStatus(_ text: String, color: UIColor) {
+        statusLabel.text = text
+        statusLabel.textColor = color
+        statusLabel.isHidden = false
+
+        messageInputBar.inputTextView.isHidden = true
+    }
+
+    private func hideStatus() {
+        statusLabel.isHidden = true
+        messageInputBar.inputTextView.isHidden = false
     }
 
     @objc private func handleMic(_ gesture: UILongPressGestureRecognizer) {
@@ -177,8 +196,6 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     }
 
     func recordingStarted() {
-        recordingLabel.isHidden = false
-        messageInputBar.inputTextView.isHidden = true
         micButton.tintColor = .systemRed
 
         updateRecordingLabel()
@@ -191,9 +208,30 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         recordingTimer?.invalidate()
         recordingTimer = nil
 
-        recordingLabel.isHidden = true
-        messageInputBar.inputTextView.isHidden = false
+        hideStatus()
         micButton.tintColor = .systemBlue
+    }
+
+    // MARK: - Поиск геопозиции
+
+    func locationSearchStarted() {
+        showStatus("◌ Определяем геопозицию…", color: .lightGray)
+        attachButton.isEnabled = false
+    }
+
+    func locationSearchStopped() {
+        hideStatus()
+        attachButton.isEnabled = true
+    }
+
+    //MARK: Отправку приблизительной точки подтверждают явно. Отказ от точности —
+    // осознанный выбор в настройках, но собеседник его не увидит: на карте будет обычная
+    // метка, просто не там, где человек стоит.
+    func confirmApproximateLocation(onSend: @escaping () -> Void) {
+        showConfirm(title: "Точность ограничена",
+                    message: "Для приложения включена приблизительная геопозиция, поэтому метка может уехать на километр от вашего места. Точность включается в Настройках, в разделе приложения.",
+                    action: "Отправить приблизительно",
+                    onConfirm: onSend)
     }
 
     //MARK: Показываем, сколько осталось, а не сколько записано: потолок жёсткий, и
@@ -201,7 +239,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     private func updateRecordingLabel() {
         let left = max(0, VoiceRecorder.maxDuration - presenter.recordingTime)
 
-        recordingLabel.text = "● Запись · осталось " + VoicePlayer.formatted(left)
+        showStatus("● Запись · осталось " + VoicePlayer.formatted(left), color: .systemRed)
     }
 
     func reloadCollection() {

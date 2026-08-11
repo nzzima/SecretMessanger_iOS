@@ -4,6 +4,14 @@
 <dict>
 	<key></key>
 	<string></string>
+	<!-- Разовый запрос полной точности: система берёт отсюда объяснение, зачем она
+	     понадобилась, когда у приложения включена приблизительная геопозиция.
+	     Словарь нельзя задать через INFOPLIST_KEY_ в настройках сборки — только здесь. -->
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>ShareLocation</key>
+		<string>Точная геопозиция нужна, чтобы собеседник увидел, где вы находитесь, а не приблизительный район в километре от вас</string>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

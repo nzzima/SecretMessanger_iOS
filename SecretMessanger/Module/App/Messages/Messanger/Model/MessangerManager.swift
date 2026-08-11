@@ -5,7 +5,7 @@
 //  Created by Nikita Krylov on 04.08.2026.
 //
 
-import Foundation
+import UIKit
 import FirebaseFirestore
 
 class MessangerManager {
@@ -269,11 +269,154 @@ class MessangerManager {
     }
 
     static let voicePreview = "🎤 Голосовое сообщение"
+    static let photoPreview = "📷 Фото"
+
+    //MARK: Фото уходит теми же тремя записями, что и голосовое: байты — в свою
+    // подколлекцию, превью — в шапку, само сообщение — к остальным. Подколлекция здесь
+    // не про порядок в базе: чат держит последние 50 сообщений и перечитывает их при
+    // каждом изменении, так что снимок внутри сообщения означал бы мегабайты трафика на
+    // каждое чужое «привет».
+    func sendPhoto(_ image: UIImage, chat: Chat, completion: @escaping (Error?) -> Void) {
+        guard let key = crypto.currentKey(for: chat) else {
+            completion(ConversationCryptoError.noKey)
+            return
+        }
+
+        //MARK: Сжатие уводим с главного потока: снимок с камеры — это 12 мегапикселей,
+        // и перерисовка с перекодированием в JPEG заметно подвешивает интерфейс.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+
+            guard let encoded = PhotoEncoder.encode(image) else {
+                DispatchQueue.main.async { completion(PhotoEncoderError.tooLarge) }
+                return
+            }
+
+            guard let sealed = try? CryptoBox.seal(encoded.data, with: key),
+                  let preview = self.crypto.encrypt(MessangerManager.photoPreview, chat: chat) else {
+                DispatchQueue.main.async { completion(ConversationCryptoError.noKey) }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.upload(sealed: sealed,
+                            preview: preview,
+                            size: encoded.size,
+                            jpeg: encoded.data,
+                            chat: chat,
+                            completion: completion)
+            }
+        }
+    }
+
+    private func upload(sealed: Data,
+                        preview: String,
+                        size: CGSize,
+                        jpeg: Data,
+                        chat: Chat,
+                        completion: @escaping (Error?) -> Void) {
+        let messageId = UUID().uuidString
+        let date = Date()
+        let conversation = ref.collection(.conversation).document(chat.id)
+
+        //MARK: Своё же фото кладём в кэш сразу — иначе отправитель увидит серую заглушку
+        // и приложение скачает из базы снимок, который лежит у него в руках. В кэш идёт
+        // сжатая версия, а не оригинал: показывать надо ровно то, что увидят остальные.
+        if let visible = UIImage(data: jpeg) {
+            PhotoCache.shared.store(visible, for: messageId)
+        }
+
+        conversation.collection(.images).document(messageId).setData([
+            "senderId": chat.selfId,
+            "data": sealed
+        ]) { [weak self] err in
+            guard let self, err == nil else {
+                completion(err)
+                return
+            }
+
+            //MARK: Превью в списке чатов — обычный текст под тем же ключом. Без него
+            // диалог из одних фотографий пропал бы из «Чатов»: `Conversation` отбрасывает
+            // шапку с пустым `lastMessage`.
+            conversation.setData([
+                "logins": self.logins(of: chat),
+                "lastMessage": preview,
+                "lastEnc": 1,
+                "lastV": chat.keyVersion,
+                "date": date
+            ], merge: true) { err in
+                guard err == nil else {
+                    completion(err)
+                    return
+                }
+
+                conversation.collection(.messages).document(messageId).setData([
+                    "senderId": chat.selfId,
+                    "message": preview,
+                    "type": "image",
+                    "width": Double(size.width),
+                    "height": Double(size.height),
+                    "enc": 1,
+                    "v": chat.keyVersion,
+                    "date": date
+                ]) { err in
+                    completion(err)
+                }
+            }
+        }
+    }
+
+    //MARK: Снимок тянется, когда ячейка появилась на экране, и остаётся в памяти. На
+    // диск расшифрованное не ложится — в отличие от голосовых, которым файл нужен для
+    // проигрывателя.
+    //
+    // Версия ключа приходит от сообщения, а не берётся текущая: после ротации (кого-то
+    // удалили из группы) текущий ключ старое фото не откроет.
+    func loadPhoto(messageId: String,
+                   version: Int,
+                   chat: Chat,
+                   completion: @escaping (Result<UIImage, Error>) -> Void) {
+        if let cached = PhotoCache.shared.image(for: messageId) {
+            completion(.success(cached))
+            return
+        }
+
+        ref
+            .collection(.conversation)
+            .document(chat.id)
+            .collection(.images)
+            .document(messageId)
+            .getDocument { [weak self] snap, err in
+                if let err {
+                    completion(.failure(err))
+                    return
+                }
+
+                guard let self,
+                      let sealed = snap?.data()?["data"] as? Data else {
+                    completion(.failure(ConversationCryptoError.noKey))
+                    return
+                }
+
+                guard let key = self.crypto.key(for: chat, version: version),
+                      let raw = try? CryptoBox.open(sealed, with: key),
+                      let image = UIImage(data: raw) else {
+                    completion(.failure(ConversationCryptoError.noKey))
+                    return
+                }
+
+                PhotoCache.shared.store(image, for: messageId)
+                completion(.success(image))
+            }
+    }
 
     //MARK: Звук скачивается по нажатию «играть» и кладётся расшифрованным во временную
     // папку: `AVAudioPlayer` умеет играть из файла, а не из памяти. Уже скачанное
     // второй раз не тянем.
-    func loadVoice(messageId: String, chat: Chat, completion: @escaping (Result<URL, Error>) -> Void) {
+    //MARK: Версия ключа берётся у самого сообщения: текущая после ротации открывает
+    // только то, что записано после неё, а голосовое, отправленное до удаления
+    // участника, запечатано предыдущей.
+    func loadVoice(messageId: String, version: Int, chat: Chat, completion: @escaping (Result<URL, Error>) -> Void) {
         let url = Voice.cacheURL(messageId: messageId)
 
         guard !Voice.isCached(messageId: messageId) else {
@@ -298,7 +441,7 @@ class MessangerManager {
                     return
                 }
 
-                guard let key = self.crypto.key(for: chat, version: chat.keyVersion),
+                guard let key = self.crypto.key(for: chat, version: version),
                       let raw = try? CryptoBox.open(sealed, with: key) else {
                     completion(.failure(ConversationCryptoError.noKey))
                     return

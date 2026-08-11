@@ -5,7 +5,7 @@
 //  Created by Nikita Krylov on 04.08.2026.
 //
 
-import Foundation
+import UIKit
 
 protocol MessangerViewPresenterProtocol: AnyObject {
     var chat: Chat { get }
@@ -20,6 +20,8 @@ protocol MessangerViewPresenterProtocol: AnyObject {
     func finishRecording()
     func cancelRecording()
     func playVoice(messageId: String, play: @escaping (URL) -> Void)
+    func sendPhoto(_ image: UIImage)
+    func loadPhoto(messageId: String, completion: @escaping (UIImage?) -> Void)
 }
 
 class MessangerViewPresenter: MessangerViewPresenterProtocol {
@@ -204,13 +206,58 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     }
 
     func playVoice(messageId: String, play: @escaping (URL) -> Void) {
-        messangerManager.loadVoice(messageId: messageId, chat: chat) { [weak self] result in
+        messangerManager.loadVoice(messageId: messageId, version: version(of: messageId), chat: chat) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let url):
                     play(url)
                 case .failure(let err):
                     self?.view?.showError(err.localizedDescription)
+                }
+            }
+        }
+    }
+
+    //MARK: Каким ключом запечатано вложение, знает только само сообщение: после ротации
+    // в группе в одной переписке лежат записи разных версий. Для сообщений до шифрования
+    // версии нет вовсе — там и расшифровывать нечего.
+    private func version(of messageId: String) -> Int {
+        incoming.first { $0.messageId == messageId }?.keyVersion ?? chat.keyVersion
+    }
+
+    // MARK: - Фото
+
+    func sendPhoto(_ image: UIImage) {
+        //MARK: Условие строже, чем у текста, и намеренно. Текст в диалогах, начатых до
+        // шифрования, до сих пор уходит открытым — история там и так лежит в базе
+        // читаемой, и запрет ничего бы не спас. Снимков в таких диалогах нет ни одного,
+        // так что открытым фото не будет никогда: нет ключа — нет отправки.
+        guard ConversationCrypto.shared.currentKey(for: chat) != nil else {
+            view?.showError(ConversationCryptoError.noKey.localizedDescription)
+            return
+        }
+
+        messangerManager.sendPhoto(image, chat: chat) { [weak self] err in
+            guard let err else { return }
+
+            DispatchQueue.main.async {
+                self?.view?.showError(err.localizedDescription)
+            }
+        }
+    }
+
+    //MARK: `nil` означает «показать замок вместо снимка». Алерт здесь не годится:
+    // загрузка идёт на появление ячейки, и на прокрутке нерасшифруемой переписки человек
+    // получил бы очередь окошек. Замок в пузыре говорит ровно то же самое и по делу.
+    func loadPhoto(messageId: String, completion: @escaping (UIImage?) -> Void) {
+        messangerManager.loadPhoto(messageId: messageId, version: version(of: messageId), chat: chat) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let image):
+                    completion(image)
+                case .failure(let err):
+                    print("Фото не открылось: \(err.localizedDescription)")
+                    completion(nil)
                 }
             }
         }

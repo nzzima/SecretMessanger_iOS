@@ -180,6 +180,27 @@ service cloud.firestore {
                       && request.resource.data.senderId == request.auth.uid;
         allow update, delete: if false;
       }
+
+      // Фотографии. Устроены ровно как голосовые и по той же причине: снимок лежит
+      // байтами в отдельном документе, а в сообщении остаются только его размеры,
+      // чтобы окно из 50 сообщений не таскало за собой мегабайты картинок.
+      //
+      // Cloud Storage здесь не участвует, и это главное. Он потребовал бы платного
+      // тарифа, но упирается всё не в деньги: правила Storage не умеют читать
+      // Firestore, поэтому «файл видят только участники диалога» там не выражается —
+      // а здесь это та же проверка по шапке, что у сообщений и у звука.
+      match /images/{messageId} {
+
+        function members() {
+          return get(/databases/$(database)/documents/conversation/$(convoId)).data.users;
+        }
+
+        allow read: if signedIn() && request.auth.uid in members();
+        allow create: if signedIn()
+                      && request.auth.uid in members()
+                      && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
   }
 }

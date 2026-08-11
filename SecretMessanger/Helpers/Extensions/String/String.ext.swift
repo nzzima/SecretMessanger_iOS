@@ -23,6 +23,7 @@ extension String {
     static let conversation = "conversation"
     static let messages = "messages"
     static let audio = "audio"
+    static let images = "images"
 }
 
 extension String {

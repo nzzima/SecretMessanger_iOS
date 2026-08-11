@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import PhotosUI
 import MessageKit
 import InputBarAccessoryView
 
@@ -37,6 +38,22 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     }(InputBarButtonItem())
 
     private lazy var micGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleMic(_:)))
+
+    //MARK: Вложение — обычным нажатием, в отличие от микрофона: выбор снимка это
+    // отдельный экран, и удержание тут было бы лишним обрядом.
+    private lazy var photoButton: InputBarButtonItem = {
+        $0.image = UIImage(systemName: "photo")
+        $0.tintColor = .systemBlue
+        $0.setSize(CGSize(width: 36, height: 36), animated: false)
+        $0.onTouchUpInside { [weak self] _ in self?.pickPhoto() }
+        return $0
+    }(InputBarButtonItem())
+
+    //MARK: Фото, которые уже тянутся из базы, и те, что не открылись. Без первого набора
+    // каждая перерисовка ячейки запускала бы ещё одну загрузку того же снимка, без
+    // второго — бесконечно повторялась бы неудачная.
+    private var loadingPhotos: Set<String> = []
+    private var failedPhotos: Set<String> = []
 
     //MARK: Подсказка на месте поля ввода, пока идёт запись: без неё непонятно, пишется
     // ли вообще что-нибудь и сколько уже наговорено.
@@ -123,8 +140,8 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         // цветом. Красим по текущему состоянию.
         messageInputBar.sendButton.tintColor = messageInputBar.sendButton.isEnabled ? .systemBlue : .darkGray
 
-        messageInputBar.setLeftStackViewWidthConstant(to: 40, animated: false)
-        messageInputBar.setStackViewItems([micButton], forStack: .left, animated: false)
+        messageInputBar.setLeftStackViewWidthConstant(to: 76, animated: false)
+        messageInputBar.setStackViewItems([micButton, photoButton], forStack: .left, animated: false)
 
         messageInputBar.addSubview(recordingLabel)
         recordingLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -190,6 +207,55 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     func showError(_ message: String) {
         showErrorAlert(message)
     }
+
+    // MARK: - Фото
+
+    //MARK: `PHPickerViewController` работает в чужом процессе и отдаёт только выбранный
+    // снимок, поэтому доступа к библиотеке он не просит вовсе — ни разрешения, ни строки
+    // в Info.plist. Старый `UIImagePickerController` потребовал бы и того и другого,
+    // а взамен не дал бы ничего.
+    private func pickPhoto() {
+        var configuration = PHPickerConfiguration()
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+
+        present(picker, animated: true)
+    }
+
+    //MARK: Перерисовываем ровно то сообщение, чьё фото приехало. Индекс ищем заново по
+    // id: пока снимок качался, переписка могла пополниться, и запомненный путь указывал
+    // бы уже на чужую ячейку.
+    private func reloadPhoto(_ messageId: String) {
+        guard let section = presenter.messages.firstIndex(where: { $0.messageId == messageId }) else { return }
+
+        messagesCollectionView.reloadItems(at: [IndexPath(item: 0, section: section)])
+    }
+}
+
+extension MessangerView: PHPickerViewControllerDelegate {
+
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+
+        guard let provider = results.first?.itemProvider,
+              provider.canLoadObject(ofClass: UIImage.self) else { return }
+
+        provider.loadObject(ofClass: UIImage.self) { [weak self] object, err in
+            //MARK: Провайдер отвечает не с главного потока, а дальше по цепочке идут и
+            // алерт, и работа с интерфейсом.
+            DispatchQueue.main.async {
+                guard let image = object as? UIImage else {
+                    self?.showError(err?.localizedDescription ?? "Не удалось прочитать фото")
+                    return
+                }
+
+                self?.presenter.sendPhoto(image)
+            }
+        }
+    }
 }
 
 extension MessangerView: MessageCellDelegate {
@@ -204,6 +270,19 @@ extension MessangerView: MessageCellDelegate {
         presenter.playVoice(messageId: message.messageId) { url in
             VoicePlayer.shared.toggle(url: url, messageId: message.messageId, cell: cell)
         }
+    }
+
+    //MARK: Во весь экран открываем только то, что уже расшифровано и лежит в памяти.
+    // Пузырь с замком нажатие игнорирует: показывать нечего, а лезть за снимком второй
+    // раз незачем — не открылся он не из-за связи.
+    func didTapImage(in cell: MessageCollectionViewCell) {
+        guard let indexPath = messagesCollectionView.indexPath(for: cell) else { return }
+
+        let message = presenter.messages[indexPath.section]
+
+        guard message.isPhoto, let image = PhotoCache.shared.image(for: message.messageId) else { return }
+
+        present(PhotoViewerController(image: image), animated: true)
     }
 }
 
@@ -269,6 +348,43 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
     // чужом при прокрутке.
     func configureAudioCell(_ cell: AudioMessageCell, message: MessageType) {
         cell.playButton.isSelected = VoicePlayer.shared.playingMessageId == message.messageId
+    }
+
+    //MARK: Единственное место, где у фото появляется картинка. Ячейка успевает
+    // нарисоваться раньше: размеры пузыря пришли в самом сообщении, а байты тянутся
+    // отсюда — когда ячейка показалась на экране, а не при открытии чата. В переписке с
+    // полусотней снимков разница между «скачать увиденное» и «скачать всё» существенная.
+    func configureMediaMessageImageView(_ imageView: UIImageView, for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
+        let id = message.messageId
+
+        if let cached = PhotoCache.shared.image(for: id) {
+            imageView.image = cached
+            return
+        }
+
+        guard !failedPhotos.contains(id) else {
+            imageView.image = Photo.locked
+            return
+        }
+
+        guard !loadingPhotos.contains(id) else { return }
+
+        loadingPhotos.insert(id)
+
+        presenter.loadPhoto(messageId: id) { [weak self] image in
+            guard let self else { return }
+
+            self.loadingPhotos.remove(id)
+
+            if image == nil {
+                self.failedPhotos.insert(id)
+            }
+
+            //MARK: Готовую картинку в `imageView` отсюда не кладём: пока снимок ехал,
+            // ячейку могли переиспользовать под другое сообщение. Перерисовка ячейки
+            // возьмёт фото из кэша сама — тем же путём, что и в первой строке метода.
+            self.reloadPhoto(id)
+        }
     }
 
     func configureAvatarView(_ avatarView: AvatarView, for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {

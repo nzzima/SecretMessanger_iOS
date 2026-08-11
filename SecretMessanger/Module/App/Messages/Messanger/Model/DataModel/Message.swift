@@ -27,17 +27,11 @@ struct Message: MessageType {
     var isVoice: Bool
     var duration: Float
 
-    init(sender: SenderType, messageId: String, sentDate: Date, kind: MessageKind) {
-        self.sender = sender
-        self.messageId = messageId
-        self.sentDate = sentDate
-        self.kind = kind
-        self.body = ""
-        self.isEncrypted = false
-        self.keyVersion = 0
-        self.isVoice = false
-        self.duration = 0
-    }
+    //MARK: Фото устроено так же и по той же причине: снимок лежит в подколлекции
+    // `images`, а в сообщении остаются только его размеры. Без них ячейка не знала бы,
+    // какой высоты пузырь рисовать, и переписка прыгала бы по мере загрузки картинок.
+    var isPhoto: Bool
+    var pixels: CGSize
 
     //MARK: В документе лежит только senderId — имя подставляет презентер, он один
     // знает состав диалога. Здесь имя пустое намеренно.
@@ -51,19 +45,63 @@ struct Message: MessageType {
         self.body = data["message"] as? String ?? ""
         self.isEncrypted = (data["enc"] as? Int ?? 0) == 1
         self.keyVersion = data["v"] as? Int ?? 0
-        self.isVoice = (data["type"] as? String ?? "") == "audio"
+        let type = data["type"] as? String ?? ""
+
+        self.isVoice = type == "audio"
         self.duration = Float(data["duration"] as? Double ?? 0)
-        self.kind = self.isVoice
-            ? .audio(Voice(messageId: messageId, duration: self.duration))
-            : .text(self.body)
+
+        self.isPhoto = type == "image"
+        self.pixels = CGSize(width: data["width"] as? Double ?? 0,
+                             height: data["height"] as? Double ?? 0)
+
+        self.kind = Message.kind(text: self.body,
+                                 messageId: messageId,
+                                 isVoice: self.isVoice,
+                                 duration: self.duration,
+                                 isPhoto: self.isPhoto,
+                                 pixels: self.pixels)
     }
 
-    //MARK: Копия для показа: имя отправителя и уже расшифрованный текст. У голосового
-    // расшифровывать в этот момент нечего — звук приезжает по нажатию.
+    //MARK: Копия для показа: имя отправителя и уже расшифрованный текст. У голосового и
+    // фото расшифровывать в этот момент нечего — байты приезжают отдельно, по нажатию
+    // или по появлению ячейки на экране.
+    //
+    // Копия делается **со всего сообщения**, а не собирается заново из четырёх полей.
+    // Раньше собиралась — и `isVoice`, `isPhoto`, `keyVersion` в показанной копии
+    // оказывались сброшенными в значения по умолчанию. Ячейка при этом выглядела верно
+    // (вид приходил отдельным параметром), а всякий, кто спрашивал у показанного
+    // сообщения, фото ли это, получал «нет»: так молча отвалилось открытие снимка на
+    // весь экран.
     func displayed(sender: SenderType, text: String) -> Message {
-        Message(sender: sender,
-                messageId: messageId,
-                sentDate: sentDate,
-                kind: isVoice ? .audio(Voice(messageId: messageId, duration: duration)) : .text(text))
+        var copy = self
+
+        copy.sender = sender
+        copy.kind = Message.kind(text: text,
+                                 messageId: messageId,
+                                 isVoice: isVoice,
+                                 duration: duration,
+                                 isPhoto: isPhoto,
+                                 pixels: pixels)
+
+        return copy
+    }
+
+    //MARK: Вид ячейки собирается в одном месте, а не в каждом инициализаторе: видов
+    // теперь три, и разъехаться им ничего не мешало бы.
+    private static func kind(text: String,
+                             messageId: String,
+                             isVoice: Bool,
+                             duration: Float,
+                             isPhoto: Bool,
+                             pixels: CGSize) -> MessageKind {
+        if isVoice {
+            return .audio(Voice(messageId: messageId, duration: duration))
+        }
+
+        if isPhoto {
+            return .photo(Photo(messageId: messageId, pixels: pixels))
+        }
+
+        return .text(text)
     }
 }

@@ -8,7 +8,7 @@
 import Foundation
 import FirebaseFirestore
 
-//MARK: Строка списка «Чаты»: сам чат плюс то, что показывается в превью.
+/// Строка списка «Чаты»: сам диалог плюс то, что показывается в превью.
 struct Conversation {
     let chat: Chat
     let lastMessage: String

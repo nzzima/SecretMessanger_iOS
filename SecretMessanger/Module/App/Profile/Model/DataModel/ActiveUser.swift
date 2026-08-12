@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Собственный профиль владельца устройства — то, что показывает вкладка «Профиль».
 struct ActiveUser {
     var id: String
     var login: String

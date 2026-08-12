@@ -7,7 +7,10 @@
 
 import Foundation
 
+/// Человек в списке контактов — ровно то, что нужно, чтобы его показать и завести
+/// с ним переписку.
 struct ChatUser {
+    /// uid из Firebase Auth, он же id документа профиля.
     var id: String
     var login: String
 

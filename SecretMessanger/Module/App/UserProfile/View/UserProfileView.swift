@@ -123,21 +123,9 @@ extension UserProfileView: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let row = rows[indexPath.item]
+        let row = rows[indexPath.row]
 
-        cell.backgroundColor = .black
-        cell.selectionStyle = .none
-
-        var config = cell.defaultContentConfiguration()
-
-        config.text = row.title
-        config.secondaryText = row.value
-        config.secondaryTextProperties.color = .white
-        config.secondaryTextProperties.font = .systemFont(ofSize: 18)
-        config.textProperties.color = .gray
-        config.textProperties.font = .systemFont(ofSize: 14)
-
-        cell.contentConfiguration = config
+        cell.configureField(title: row.title, value: row.value)
 
         return cell
     }

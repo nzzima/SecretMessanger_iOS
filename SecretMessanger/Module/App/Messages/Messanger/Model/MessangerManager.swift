@@ -283,35 +283,84 @@ class MessangerManager {
             //MARK: Превью в списке чатов — обычный текст, зашифрованный тем же ключом.
             // Без него диалог с одними голосовыми пропал бы из «Чатов»: `Conversation`
             // отбрасывает шапку с пустым `lastMessage`.
-            conversation.setData([
-                "logins": self.logins(of: chat),
-                "lastMessage": preview,
-                "lastEnc": 1,
-                "lastV": chat.keyVersion,
-                "date": date
-            ], merge: true) { err in
-                guard err == nil else {
-                    completion(err)
-                    return
-                }
-
-                conversation.collection(.messages).document(messageId).setData([
-                    "senderId": chat.selfId,
-                    "message": preview,
-                    "type": "audio",
-                    "duration": duration,
-                    "enc": 1,
-                    "v": chat.keyVersion,
-                    "date": date
-                ]) { err in
-                    completion(err)
-                }
-            }
+            self.write(header: self.header(preview: preview, chat: chat, date: date, encrypted: true),
+                       message: self.message(payload: preview, chat: chat, date: date, encrypted: true,
+                                             extra: ["type": "audio", "duration": duration]),
+                       id: messageId,
+                       chat: chat,
+                       completion: completion)
         }
     }
 
     static let voicePreview = "🎤 Голосовое сообщение"
     static let photoPreview = "📷 Фото"
+
+    // MARK: - Отправка: общая часть
+
+    /// Шапка диалога — то, что видно в списке «Чаты».
+    ///
+    /// Своё имя пишется в неё при каждой отправке (см. ``logins(of:)``), превью — тем же
+    /// шифротекстом, что и само сообщение: оставь его открытым, и последняя реплика
+    /// каждого диалога лежала бы в базе читаемой.
+    ///
+    /// - Parameters:
+    ///   - preview: то, что покажет список: сам текст или пометка вроде «📷 Фото».
+    ///   - encrypted: диалоги, начатые до шифрования, ключа не имеют и пишут открытым.
+    private func header(preview: String, chat: Chat, date: Date, encrypted: Bool) -> [String: Any] {
+        var header: [String: Any] = [
+            "logins": logins(of: chat),
+            "lastMessage": preview,
+            "date": date
+        ]
+
+        if encrypted {
+            header["lastEnc"] = 1
+            header["lastV"] = chat.keyVersion
+        }
+
+        return header
+    }
+
+    /// Сам документ сообщения. `extra` — поля, которые есть только у своего вида:
+    /// длительность у голосового, размеры у фото, тип у всего, кроме текста.
+    private func message(payload: String, chat: Chat, date: Date,
+                         encrypted: Bool, extra: [String: Any] = [:]) -> [String: Any] {
+        var message: [String: Any] = [
+            "senderId": chat.selfId,
+            "message": payload,
+            "date": date
+        ]
+
+        if encrypted {
+            message["enc"] = 1
+            message["v"] = chat.keyVersion
+        }
+
+        message.merge(extra) { _, new in new }
+
+        return message
+    }
+
+    /// Пишет шапку, а следом — сообщение, и порядок здесь обязателен.
+    ///
+    /// С появлением групп участие в сообщениях проверяется правилами по документу шапки,
+    /// поэтому к моменту записи сообщения она должна быть актуальна. Все четыре вида
+    /// отправки — текст, голос, фото, геопозиция — ходят этим путём.
+    private func write(header: [String: Any], message: [String: Any], id: String,
+                       chat: Chat, completion: @escaping (Error?) -> Void) {
+        let conversation = ref.collection(.conversation).document(chat.id)
+
+        conversation.setData(header, merge: true) { err in
+            guard err == nil else {
+                completion(err)
+                return
+            }
+
+            conversation.collection(.messages).document(id).setData(message) { err in
+                completion(err)
+            }
+        }
+    }
 
     //MARK: Фото уходит теми же тремя записями, что и голосовое: байты — в свою
     // подколлекцию, превью — в шапку, само сообщение — к остальным. Подколлекция здесь
@@ -380,31 +429,14 @@ class MessangerManager {
             //MARK: Превью в списке чатов — обычный текст под тем же ключом. Без него
             // диалог из одних фотографий пропал бы из «Чатов»: `Conversation` отбрасывает
             // шапку с пустым `lastMessage`.
-            conversation.setData([
-                "logins": self.logins(of: chat),
-                "lastMessage": preview,
-                "lastEnc": 1,
-                "lastV": chat.keyVersion,
-                "date": date
-            ], merge: true) { err in
-                guard err == nil else {
-                    completion(err)
-                    return
-                }
-
-                conversation.collection(.messages).document(messageId).setData([
-                    "senderId": chat.selfId,
-                    "message": preview,
-                    "type": "image",
-                    "width": Double(size.width),
-                    "height": Double(size.height),
-                    "enc": 1,
-                    "v": chat.keyVersion,
-                    "date": date
-                ]) { err in
-                    completion(err)
-                }
-            }
+            self.write(header: self.header(preview: preview, chat: chat, date: date, encrypted: true),
+                       message: self.message(payload: preview, chat: chat, date: date, encrypted: true,
+                                             extra: ["type": "image",
+                                                     "width": Double(size.width),
+                                                     "height": Double(size.height)]),
+                       id: messageId,
+                       chat: chat,
+                       completion: completion)
         }
     }
 
@@ -423,34 +455,16 @@ class MessangerManager {
         }
 
         let date = Date()
-        let conversation = ref.collection(.conversation).document(chat.id)
 
-        conversation.setData([
-            "logins": logins(of: chat),
-            "lastMessage": preview,
-            "lastEnc": 1,
-            "lastV": chat.keyVersion,
-            "date": date
-        ], merge: true) { err in
-            guard err == nil else {
-                completion(err)
-                return
-            }
-
-            //MARK: В превью списка «Чаты» уходит «📍 Геопозиция», а в сообщение — сами
-            // координаты: показывать в списке широту с долготой незачем, а хранить их
-            // где-то ещё, кроме сообщения, — тем более.
-            conversation.collection(.messages).document(UUID().uuidString).setData([
-                "senderId": chat.selfId,
-                "message": payload,
-                "type": "location",
-                "enc": 1,
-                "v": chat.keyVersion,
-                "date": date
-            ]) { err in
-                completion(err)
-            }
-        }
+        //MARK: В превью списка «Чаты» уходит «📍 Геопозиция», а в сообщение — сами
+        // координаты: показывать в списке широту с долготой незачем, а хранить их
+        // где-то ещё, кроме сообщения, — тем более.
+        write(header: header(preview: preview, chat: chat, date: date, encrypted: true),
+              message: message(payload: payload, chat: chat, date: date, encrypted: true,
+                               extra: ["type": "location"]),
+              id: UUID().uuidString,
+              chat: chat,
+              completion: completion)
     }
 
     //MARK: Снимок тянется, когда ячейка появилась на экране, и остаётся в памяти. На
@@ -543,13 +557,20 @@ class MessangerManager {
             }
     }
 
+    /// Отправляет текстовое сообщение.
+    ///
+    /// Единственный вид отправки без `completion`: экран решает судьбу набранного текста
+    /// заранее — по тому, есть ли ключ, — а неудача самой записи ему уже ничего не даёт.
     func send(text: String, chat: Chat) {
         let date = Date()
-        let conversation = ref.collection(.conversation).document(chat.id)
 
         //MARK: `lastMessage` шифруется тем же ключом, что и само сообщение. Оставить
         // его открытым значило бы выложить последнюю реплику каждого диалога в базу
         // открытым текстом — от шифрования остался бы один вид.
+        //
+        //MARK: Диалоги, начатые до шифрования, ключа не имеют, и текст в них до сих пор
+        // уходит открытым: их история и так лежит в базе читаемой. Вложения так не умеют
+        // вовсе — нет ключа, нет отправки.
         let payload = chat.isEncrypted ? crypto.encrypt(text, chat: chat) : text
 
         guard let payload else {
@@ -557,49 +578,16 @@ class MessangerManager {
             return
         }
 
-        //MARK: Шапка обновляется ПЕРЕД записью сообщения, и это не вкусовщина: с
-        // появлением групп участие в сообщениях проверяется правилами по документу
-        // шапки, поэтому к моменту записи сообщения она должна быть актуальна.
-        //
-        // `users` в этой записи нет намеренно — состав правит только создатель через
-        // «Участников». Заводит шапку `ensureConversation`, и до первой отправки она
-        // всегда уже есть.
-        var header: [String: Any] = [
-            "logins": logins(of: chat),
-            "lastMessage": payload,
-            "date": date
-        ]
-
-        if chat.isEncrypted {
-            header["lastEnc"] = 1
-            header["lastV"] = chat.keyVersion
-        }
-
-        conversation.setData(header, merge: true) { err in
+        //MARK: `users` в этой записи нет намеренно — состав правит только создатель
+        // через «Участников». Заводит шапку `ensureConversation`, и до первой отправки
+        // она всегда уже есть.
+        write(header: header(preview: payload, chat: chat, date: date, encrypted: chat.isEncrypted),
+              message: message(payload: payload, chat: chat, date: date, encrypted: chat.isEncrypted),
+              id: UUID().uuidString,
+              chat: chat) { err in
             if let err {
-                print("Диалог не обновился: \(err.localizedDescription)")
-                return
+                print("Сообщение не отправилось: \(err.localizedDescription)")
             }
-
-            var message: [String: Any] = [
-                "senderId": chat.selfId,
-                "message": payload,
-                "date": date
-            ]
-
-            if chat.isEncrypted {
-                message["enc"] = 1
-                message["v"] = chat.keyVersion
-            }
-
-            conversation
-                .collection(.messages)
-                .document(UUID().uuidString)
-                .setData(message) { err in
-                    if let err {
-                        print("Сообщение не отправилось: \(err.localizedDescription)")
-                    }
-                }
         }
     }
 }

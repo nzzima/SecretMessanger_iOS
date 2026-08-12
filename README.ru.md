@@ -7,6 +7,13 @@ UIKit, MVP, без SwiftUI. Около 8 000 строк Swift и 64 юнит-т�
 
 *[Read in English](README.md)*
 
+| Чаты | Переписка | Контакты | Профиль |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/chats.png" width="200"> | <img src="docs/screenshots/conversation.png" width="200"> | <img src="docs/screenshots/contacts.png" width="200"> | <img src="docs/screenshots/profile.png" width="200"> |
+
+<sub>Симулятор, тестовые аккаунты. У диалога на двоих в строке аватар собеседника, у
+группы — значок: выбрать одно лицо из нескольких значило бы соврать.</sub>
+
 ---
 
 ## Что работает

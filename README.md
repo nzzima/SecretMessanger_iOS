@@ -7,6 +7,13 @@ UIKit, MVP, no SwiftUI. Around 8 000 lines of Swift and 64 unit tests.
 
 *[Читать по-русски](README.ru.md)*
 
+| Chats | Conversation | Contacts | Profile |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/chats.png" width="200"> | <img src="docs/screenshots/conversation.png" width="200"> | <img src="docs/screenshots/contacts.png" width="200"> | <img src="docs/screenshots/profile.png" width="200"> |
+
+<sub>Simulator, test accounts. A one-to-one row shows the other person's avatar; a group
+shows a glyph, because picking one member's face out of several would simply be untrue.</sub>
+
 ---
 
 ## What works

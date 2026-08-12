@@ -30,16 +30,7 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
         ]
     }
 
-    lazy var imageView: UIImageView = {
-        $0.image = UIImage(named: "basicUserImage")
-        $0.contentMode = .scaleAspectFill
-        $0.layer.borderWidth = 4
-        $0.layer.borderColor = UIColor.gray.cgColor
-        $0.clipsToBounds = true
-        $0.layer.masksToBounds = true
-        $0.layer.cornerRadius = 50
-        return $0
-    }(UIImageView())
+    lazy var imageView = AvatarImageView.profile()
 
     lazy var rigthBarButton: UIButton = {
         $0.setImage(UIImage(systemName: "message"), for: .normal)
@@ -83,7 +74,7 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
     func reloadAvatar() {
         guard isViewLoaded else { return }
 
-        imageView.image = presenter.avatar ?? UIImage(named: "basicUserImage")
+        imageView.show(presenter.avatar)
     }
 
     @objc func goToMessanger(_ sender: UIButton) {
@@ -113,8 +104,8 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            imageView.widthAnchor.constraint(equalToConstant: 120),
-            imageView.heightAnchor.constraint(equalToConstant: 120),
+            imageView.widthAnchor.constraint(equalToConstant: AvatarImageView.profileDiameter),
+            imageView.heightAnchor.constraint(equalToConstant: AvatarImageView.profileDiameter),
 
             tableView.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 30),
             tableView.centerXAnchor.constraint(equalTo: view.centerXAnchor),

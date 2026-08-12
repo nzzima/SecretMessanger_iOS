@@ -20,7 +20,7 @@
                     <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="25R-Wu-ij1">
                         <rect key="frame" x="5" y="5" width="400" height="84"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="WZ1-gn-i9y">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="WZ1-gn-i9y" customClass="AvatarImageView" customModule="SecretMessanger" customModuleProvider="target">
                                 <rect key="frame" x="20" y="17" width="50" height="50"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="50" id="fgo-T9-QbL"/>

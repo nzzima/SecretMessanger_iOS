@@ -20,16 +20,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     
     var presenter: EditProfileViewPresenterProtocol!
     
-    lazy var imageView: UIImageView = {
-        $0.image = UIImage(named: "basicUserImage")
-        $0.contentMode = .scaleAspectFill
-        $0.layer.borderWidth = 4
-        $0.layer.borderColor = UIColor.gray.cgColor
-        $0.clipsToBounds = true
-        $0.layer.masksToBounds = true
-        $0.layer.cornerRadius = 50
-        return $0
-    }(UIImageView())
+    lazy var imageView = AvatarImageView.profile()
     
     let loginLabel: UILabel = {
         $0.text = "Логин"
@@ -113,7 +104,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     // изображения для этого не заводим: тот же `basicUserImage` стоит во всех местах,
     // где человек без фото.
     func fill(avatar: UIImage?) {
-        imageView.image = avatar ?? UIImage(named: "basicUserImage")
+        imageView.show(avatar)
     }
     
     //MARK: Возвращаемся в профиль: он слушает свой документ и покажет новое сразу,
@@ -138,8 +129,8 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            imageView.widthAnchor.constraint(equalToConstant: 120),
-            imageView.heightAnchor.constraint(equalToConstant: 120),
+            imageView.widthAnchor.constraint(equalToConstant: AvatarImageView.profileDiameter),
+            imageView.heightAnchor.constraint(equalToConstant: AvatarImageView.profileDiameter),
             
             editAvatar.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
             editAvatar.centerXAnchor.constraint(equalTo: view.centerXAnchor),

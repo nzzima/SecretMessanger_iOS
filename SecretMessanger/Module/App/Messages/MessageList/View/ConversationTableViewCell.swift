@@ -13,10 +13,6 @@ class ConversationTableViewCell: UITableViewCell {
 
     static let reuseIdentifier = "ConversationTableViewCell"
 
-    //MARK: Чей аватар ячейка ждёт прямо сейчас — ячейки переиспользуются, и пока
-    // картинка едет, эта же ячейка успевает уехать под другой диалог.
-    private var awaitedUid: String?
-
     private let parentView: UIView = {
         $0.layer.cornerRadius = 10
         $0.layer.borderColor = UIColor.lightGray.cgColor
@@ -25,14 +21,7 @@ class ConversationTableViewCell: UITableViewCell {
         return $0
     }(UIView())
 
-    private let userImage: UIImageView = {
-        $0.image = UIImage(named: "basicUserImage")
-        $0.contentMode = .scaleAspectFill
-        $0.clipsToBounds = true
-        $0.layer.cornerRadius = 30
-        $0.translatesAutoresizingMaskIntoConstraints = false
-        return $0
-    }(UIImageView())
+    private let userImage = AvatarImageView.cell()
 
     private let loginLabel: UILabel = {
         $0.textColor = .white
@@ -66,57 +55,23 @@ class ConversationTableViewCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Заполняет строку списка.
+    ///
+    /// - Parameters:
+    ///   - conversation: диалог: название, превью и время.
+    ///   - avatarVersion: версия аватара собеседника; для группы не используется.
     func configCell(_ conversation: Conversation, avatarVersion: Int) {
         loginLabel.text = conversation.title
         lastMessageLabel.text = conversation.lastMessage.truncate(to: 40)
         dateLabel.text = conversation.date.formatted(date: .omitted, time: .shortened)
 
-        //MARK: У группы собеседник не один, и ставить лицо кого-то одного из участников
-        // значило бы врать. Значок группы честнее — и сразу отличает её от диалога.
+        //MARK: У группы собеседник не один — там значок, а не чьё-то лицо.
         guard let uid = conversation.companionId else {
-            awaitedUid = nil
-            showGroupIcon()
+            userImage.showGroup()
             return
         }
 
-        awaitedUid = uid
-
-        //MARK: Кэш спрашиваем синхронно: у большинства строк картинка уже есть, а
-        // асинхронный заказ ради неё моргал бы заглушкой на каждой прокрутке.
-        if let cached = AvatarStore.shared.cached(uid: uid, version: avatarVersion) {
-            show(cached)
-            return
-        }
-
-        showPlaceholder()
-
-        AvatarStore.shared.load(uid: uid, version: avatarVersion) { [weak self] image in
-            guard let self, let image, self.awaitedUid == uid else { return }
-
-            self.show(image)
-        }
-    }
-
-    private func show(_ image: UIImage) {
-        userImage.image = image
-        userImage.contentMode = .scaleAspectFill
-        userImage.backgroundColor = .clear
-    }
-
-    private func showPlaceholder() {
-        userImage.image = UIImage(named: "basicUserImage")
-        userImage.contentMode = .scaleAspectFill
-        userImage.backgroundColor = .clear
-    }
-
-    //MARK: Символ рисуется по центру, а не растягивается: у `person.2.fill` свои поля,
-    // и `scaleAspectFill` расплющил бы его о края кружка.
-    private func showGroupIcon() {
-        userImage.image = UIImage(systemName: "person.2.fill",
-                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: 26))
-        userImage.contentMode = .center
-        userImage.tintColor = .lightGray
-        userImage.backgroundColor = .black
+        userImage.load(uid: uid, version: avatarVersion)
     }
 
     private func settingCell() {
@@ -139,8 +94,8 @@ class ConversationTableViewCell: UITableViewCell {
 
             userImage.leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: 20),
             userImage.centerYAnchor.constraint(equalTo: parentView.centerYAnchor),
-            userImage.widthAnchor.constraint(equalToConstant: 60),
-            userImage.heightAnchor.constraint(equalToConstant: 60),
+            userImage.widthAnchor.constraint(equalToConstant: AvatarImageView.cellDiameter),
+            userImage.heightAnchor.constraint(equalToConstant: AvatarImageView.cellDiameter),
 
             loginLabel.topAnchor.constraint(equalTo: userImage.topAnchor, constant: 4),
             loginLabel.leadingAnchor.constraint(equalTo: userImage.trailingAnchor, constant: 15),

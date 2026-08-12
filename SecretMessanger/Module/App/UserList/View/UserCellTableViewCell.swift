@@ -7,43 +7,28 @@
 
 import UIKit
 
+/// Строка списка «Контакты»: аватар и логин.
 class UserCellTableViewCell: UITableViewCell {
-    
+
     @IBOutlet weak var parentView: UIView!
     @IBOutlet weak var userLogin: UILabel!
-    @IBOutlet weak var userImage: UIImageView!
-    
-    static let reuseIdentifier = "UserCellTableViewCell"
 
-    //MARK: Чей аватар ячейка ждёт прямо сейчас. Ячейки переиспользуются, и пока
-    // картинка едет, та же самая ячейка успевает уехать под другого человека —
-    // без этой проверки в списке появлялись бы чужие лица.
-    private var awaitedUid: String?
+    //MARK: Класс аутлета подменён в самом xib (`customClass`), поэтому загрузку и
+    // подстановку аватара ячейка не пишет вовсе — этим занимается `AvatarImageView`.
+    @IBOutlet weak var userImage: AvatarImageView!
+
+    static let reuseIdentifier = "UserCellTableViewCell"
 
     override func awakeFromNib() {
         super.awakeFromNib()
         settingCell()
     }
 
+    /// Заполняет строку контакта.
     func configCell(_ user: ChatUser) {
         userLogin.text = user.login
 
-        awaitedUid = user.id
-
-        //MARK: Кэш спрашиваем синхронно: у большинства ячеек картинка уже есть, и
-        // асинхронный заказ ради неё означал бы мигание заглушкой на каждой прокрутке.
-        if let cached = AvatarStore.shared.cached(uid: user.id, version: user.avatarVersion) {
-            userImage.image = cached
-            return
-        }
-
-        userImage.image = UIImage(named: "basicUserImage")
-
-        AvatarStore.shared.load(uid: user.id, version: user.avatarVersion) { [weak self] image in
-            guard let self, let image, self.awaitedUid == user.id else { return }
-
-            self.userImage.image = image
-        }
+        userImage.load(uid: user.id, version: user.avatarVersion)
     }
 
     func settingCell() {
@@ -51,7 +36,7 @@ class UserCellTableViewCell: UITableViewCell {
         parentView.layer.borderColor = UIColor.lightGray.cgColor
         parentView.layer.borderWidth = 0.5
         userImage.layer.cornerRadius = userImage.frame.width / 2
-        userImage.image = UIImage(named: "basicUserImage")
+        userImage.showPlaceholder()
     }
 
     override func setSelected(_ selected: Bool, animated: Bool) {

@@ -9,6 +9,7 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 
+/// Правка своего профиля: поля, логин с переносом в реестре и маркер аватара.
 class EditProfileManager {
 
     private let ref = Firestore.firestore()
@@ -17,6 +18,7 @@ class EditProfileManager {
     //MARK: Здесь висели два слушателя на всю коллекцию `users` — по одному на каждое
     // поле одного и того же документа, и ни один не отцеплялся. Форме редактирования
     // живые обновления не нужны: свой документ читается один раз, при открытии.
+    /// Читает свой профиль один раз, чтобы заполнить форму.
     func getActiveUser(completion: @escaping (ActiveUser) -> Void) {
         guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
 
@@ -47,6 +49,11 @@ class EditProfileManager {
     //
     // Обрыв посередине не ломает ничего: у нас окажутся заняты оба имени, а повторная
     // попытка увидит новое уже своим и просто доведёт дело до конца.
+    /// Сохраняет профиль, при необходимости перенося захват логина в реестре.
+    ///
+    /// - Parameter currentLogin: имя до правки. По нему видно, менялся ли логин и надо
+    ///   ли рассылать его по шапкам диалогов.
+    /// - Note: порядок шагов и его последствия — в пояснении выше.
     func save(login: String, name: String, someInfo: String, currentLogin: String,
               completion: @escaping (Error?) -> Void) {
         guard let uid = FirebaseManager.shared.getUser()?.uid else { return }

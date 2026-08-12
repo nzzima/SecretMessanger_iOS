@@ -20,6 +20,7 @@ import CryptoKit
 // Версии нужны ради ротации: когда участника удаляют, заводится новый ключ, а старые
 // остаются в шапке, чтобы уже написанное осталось читаемым. Каждое сообщение помнит,
 // какой версией зашифровано.
+/// Единственная беда, о которой экрану стоит знать: ключа диалога у нас нет.
 enum ConversationCryptoError: LocalizedError {
     case noKey
 
@@ -31,14 +32,21 @@ enum ConversationCryptoError: LocalizedError {
     }
 }
 
+/// Ключи диалогов: достать свой, раздать участникам, зашифровать и расшифровать
+/// сообщение.
+///
+/// Схему хранения и смысл версий см. в пояснении выше.
 final class ConversationCrypto {
 
     static let shared = ConversationCrypto()
 
+    /// Открытые ключи диалогов, по одному на диалог и версию. Открывать их заново на
+    /// каждое сообщение незачем — это асимметричная операция, а сообщений в чате полсотни.
     private var cache: [String: SymmetricKey] = [:]
 
     private init() {}
 
+    /// Новый ключ диалога — при создании чата и при каждой ротации.
     func newKey() -> SymmetricKey {
         SymmetricKey(size: .bits256)
     }
@@ -50,12 +58,18 @@ final class ConversationCrypto {
         "\(convoId)/v\(version)"
     }
 
+    /// Ключ записи в карте `convoKeys`: чей ключ и какой версии.
     func entryKey(uid: String, version: Int) -> String {
         "\(uid)_\(version)"
     }
 
     // MARK: - Чтение ключа
 
+    /// Достаёт ключ диалога нужной версии — из кэша или распечатывая свою запись.
+    ///
+    /// - Returns: `nil`, если записи для нас нет (ключ ещё не выдали) или она
+    ///   запечатана для другой пары ключей — например, после переезда на устройство
+    ///   без iCloud Keychain. Второй случай невосстановим.
     func key(for chat: Chat, version: Int) -> SymmetricKey? {
         let cacheKey = "\(chat.id)/\(version)/\(chat.selfId)"
 
@@ -79,6 +93,7 @@ final class ConversationCrypto {
         }
     }
 
+    /// Ключ текущей версии — им шифруется всё, что отправляется сейчас.
     func currentKey(for chat: Chat) -> SymmetricKey? {
         key(for: chat, version: chat.keyVersion)
     }
@@ -88,6 +103,10 @@ final class ConversationCrypto {
     //MARK: Запечатывает ключ для всех, чей открытый ключ известен. Участник без
     // `publicKey` (не заходил после появления шифрования) молча пропускается — его
     // запись допишется, когда создатель откроет диалог следующий раз.
+    /// Запечатывает ключ для каждого, чей открытый ключ известен.
+    ///
+    /// - Parameter publicKeys: uid → открытый ключ в base64.
+    /// - Returns: готовые записи для карты `convoKeys` в шапке диалога.
     func sealed(key: SymmetricKey,
                 version: Int,
                 convoId: String,
@@ -112,6 +131,7 @@ final class ConversationCrypto {
     // Правила и так дают ему прочитать всю историю, и без старых ключей он увидел бы
     // вместо неё стену нерасшифрованного: экран выглядел бы сломанным, а секрета всё
     // равно бы не прибавилось.
+    /// То же, но всеми версиями сразу — для участника, добавленного в живую группу.
     func sealedAllVersions(chat: Chat, for publicKeys: [String: String]) -> [String: String] {
         var entries: [String: String] = [:]
 
@@ -126,12 +146,18 @@ final class ConversationCrypto {
 
     // MARK: - Сообщения
 
+    /// Шифрует текст текущим ключом диалога. `nil` — ключа нет, отправлять нечего.
     func encrypt(_ text: String, chat: Chat) -> String? {
         guard let key = currentKey(for: chat) else { return nil }
 
         return try? CryptoBox.seal(text, with: key)
     }
 
+    /// Расшифровывает сообщение той версией ключа, которой оно было закрыто.
+    ///
+    /// - Parameter version: берётся у самого сообщения, а не у диалога: после ротации
+    ///   старые сообщения открываются только старым ключом.
+    /// - Returns: `nil` — показать «🔒 Сообщение не расшифровано».
     func decrypt(_ payload: String, chat: Chat, version: Int) -> String? {
         guard let key = key(for: chat, version: version) else { return nil }
 

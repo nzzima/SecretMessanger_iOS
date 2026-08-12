@@ -9,10 +9,15 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 
+/// Список контактов — все зарегистрированные, кроме себя.
 class UserListManager {
     private let ref = Firestore.firestore()
     private var listener: ListenerRegistration?
 
+    /// Слушает коллекцию профилей: имена и аватары меняются, и список это показывает.
+    ///
+    /// - Note: слушатель на всю коллекцию. На десятках пользователей это незаметно,
+    ///   на сотнях — заметно очень, и тогда понадобится постраничная загрузка.
     func getAllUsers(completion: @escaping ([ChatUser]) -> Void) {
         listener?.remove()
 
@@ -36,6 +41,7 @@ class UserListManager {
             }
     }
 
+    /// Снимает слушатель.
     func stopObserving() {
         listener?.remove()
         listener = nil

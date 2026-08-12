@@ -7,9 +7,12 @@
 
 import Foundation
 
+/// Список «Чаты»: диалоги свежими сверху и аватары собеседников.
 protocol MessageListViewPresenterProtocol: AnyObject {
     var conversations: [Conversation] { get }
     func chat(at index: Int) -> Chat
+
+    /// Версия аватара собеседника; ноль — аватара нет или мы его ещё не спросили.
     func avatarVersion(for uid: String) -> Int
 }
 

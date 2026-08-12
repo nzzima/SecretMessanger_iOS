@@ -8,6 +8,7 @@
 import Foundation
 import CryptoKit
 
+/// Что может пойти не так при шифровании.
 enum CryptoError: LocalizedError {
     case malformedPayload
     case noIdentityKey
@@ -33,12 +34,21 @@ enum CryptoError: LocalizedError {
 // считает тот же секрет своим постоянным ключом и эфемерным открытым. Иначе пришлось
 // бы хранить рядом ещё и uid отправителя и держать эту связь верной при каждой
 // перевыдаче ключей.
+/// Шифрование: два примитива и ничего сверх того.
+///
+/// - Симметричный (AES-GCM ключом диалога) — им закрываются сами сообщения:
+///   ``seal(_:with:)-(String,_)`` для текста и ``seal(_:with:)-(Data,_)`` для вложений.
+/// - Асимметричный (Curve25519) — им ключ диалога запечатывается каждому участнику
+///   отдельно: ``seal(_:for:context:)``.
 enum CryptoBox {
 
+    /// Разделяет эфемерный открытый ключ и шифротекст в запечатанной записи.
     private static let separator: Character = "."
 
     // MARK: - Симметричное: сообщения
 
+    /// Шифрует текст ключом диалога.
+    /// - Returns: base64 — в таком виде он и ложится в поле документа.
     static func seal(_ text: String, with key: SymmetricKey) throws -> String {
         let box = try AES.GCM.seal(Data(text.utf8), using: key)
 
@@ -47,6 +57,8 @@ enum CryptoBox {
         return combined.base64EncodedString()
     }
 
+    /// Расшифровывает текст, зашифрованный ``seal(_:with:)-(String,_)``.
+    /// - Throws: ``CryptoError/malformedPayload`` или ошибку CryptoKit, если ключ не тот.
     static func open(_ payload: String, with key: SymmetricKey) throws -> String {
         guard let data = Data(base64Encoded: payload) else { throw CryptoError.malformedPayload }
 
@@ -61,6 +73,8 @@ enum CryptoBox {
     //MARK: Голосовое сообщение шифруется тем же ключом диалога, что и текст, только
     // остаётся байтами: в Firestore есть тип `bytes`, и гонять запись через base64
     // значило бы раздуть её на треть — а мы упираемся в лимит документа в 1 МиБ.
+    /// Шифрует вложение — голосовое или снимок — тем же ключом диалога.
+    /// - Returns: байты, а не base64: см. пояснение выше.
     static func seal(_ data: Data, with key: SymmetricKey) throws -> Data {
         let box = try AES.GCM.seal(data, using: key)
 
@@ -69,12 +83,21 @@ enum CryptoBox {
         return combined
     }
 
+    /// Расшифровывает вложение.
     static func open(_ data: Data, with key: SymmetricKey) throws -> Data {
         try AES.GCM.open(try AES.GCM.SealedBox(combined: data), using: key)
     }
 
     // MARK: - Асимметричное: ключ диалога для участника
 
+    /// Запечатывает ключ диалога для одного участника.
+    ///
+    /// - Parameters:
+    ///   - key: симметричный ключ диалога — то, что прячем.
+    ///   - recipient: открытая половина постоянного ключа получателя.
+    ///   - context: id диалога и номер версии. Подмешивается в вывод HKDF, поэтому
+    ///     переставить запечатанный ключ в другой диалог не выйдет.
+    /// - Returns: `<эфемерный открытый ключ>.<шифротекст>`, обе части в base64.
     static func seal(_ key: SymmetricKey,
                      for recipient: Curve25519.KeyAgreement.PublicKey,
                      context: String) throws -> String {
@@ -96,6 +119,11 @@ enum CryptoBox {
             + combined.base64EncodedString()
     }
 
+    /// Достаёт ключ диалога из записи, запечатанной для нас.
+    ///
+    /// - Parameters:
+    ///   - identity: свой постоянный приватный ключ из ``KeyStore``.
+    ///   - context: тот же, что при запечатывании, иначе HKDF даст другой ключ.
     static func open(_ payload: String,
                      with identity: Curve25519.KeyAgreement.PrivateKey,
                      context: String) throws -> SymmetricKey {
@@ -132,6 +160,8 @@ enum CryptoBox {
 }
 
 extension SymmetricKey {
+
+    /// Сырые байты ключа — чтобы запечатать его как обычные данные.
     var raw: Data {
         withUnsafeBytes { Data($0) }
     }

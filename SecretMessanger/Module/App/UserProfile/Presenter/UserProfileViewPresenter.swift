@@ -7,10 +7,16 @@
 
 import UIKit
 
+/// Профиль собеседника и кнопка «написать».
 protocol UserProfileViewPresenterProtocol: AnyObject {
+    /// Пока профиль не подгрузился — имя из списка контактов: экран не должен
+    /// открываться безымянным.
     var title: String { get }
     var profile: ProfileInfo? { get }
     var avatar: UIImage? { get }
+
+    /// Диалог с этим человеком. Id соберётся из пары uid, поэтому кнопка открывает
+    /// существующую переписку, а не заводит вторую.
     var chat: Chat? { get }
 }
 

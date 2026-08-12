@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Список контактов — все зарегистрированные, кроме себя.
 protocol UserListViewPresenterProtocol: AnyObject {
     var users: [ChatUser] { get set }
 }

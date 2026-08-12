@@ -8,11 +8,16 @@
 import Foundation
 import FirebaseFirestore
 
+/// Список диалогов для вкладки «Чаты».
 class MessageListManager {
 
     private let ref = Firestore.firestore()
     private var listener: ListenerRegistration?
 
+    /// Слушает все диалоги, где мы состоим, и отдаёт их свежими сверху.
+    ///
+    /// - Note: пустые диалоги отсеиваются самим ``Conversation`` — шапка заводится при
+    ///   открытии чата, до первого сообщения показывать в списке нечего.
     func observeConversations(selfId: String, completion: @escaping ([Conversation]) -> Void) {
         listener?.remove()
 
@@ -39,6 +44,7 @@ class MessageListManager {
             }
     }
 
+    /// Снимает слушатель.
     func stopObserving() {
         listener?.remove()
         listener = nil

@@ -7,20 +7,33 @@
 
 import UIKit
 
+/// Что переписка обещает своему экрану.
 protocol MessangerViewPresenterProtocol: AnyObject {
     var chat: Chat { get }
+
+    /// Заголовок: имена всех, кроме себя. У группы меняется вместе с составом.
     var title: String { get }
     var isGroup: Bool { get }
     var selfSender: Sender { get }
     var messages: [Message] { get }
     var isRecording: Bool { get }
+
+    /// Сколько уже пишем. Экран считает по нему **вниз**: упереться в потолок значило
+    /// бы потерять наговорённое в момент отправки.
     var recordingTime: TimeInterval { get }
+
+    /// - Returns: `false` — сообщение не принято (нет ключа диалога). Набранный текст
+    ///   в этом случае остаётся в поле, а не пропадает вместе с неудачей.
     @discardableResult func sendMessage(text: String) -> Bool
     func startRecording()
     func finishRecording()
+
+    /// Отмена: запись выбрасывается, ничего не отправляется.
     func cancelRecording()
     func playVoice(messageId: String, play: @escaping (URL) -> Void)
     func sendPhoto(_ image: UIImage)
+
+    /// Тянет снимок по появлению ячейки. `nil` — показать замок в пузыре.
     func loadPhoto(messageId: String, completion: @escaping (UIImage?) -> Void)
     func shareLocation()
     func avatar(for uid: String) -> UIImage?

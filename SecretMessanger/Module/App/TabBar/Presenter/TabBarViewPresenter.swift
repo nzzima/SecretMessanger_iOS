@@ -12,6 +12,8 @@ protocol TabBarViewPresenterProtocol: AnyObject {
     
 }
 
+/// Три вкладки — и единственная точка, через которую приложение входит в рабочее
+/// состояние: после биометрии, после входа и после регистрации.
 class TabBarViewPresenter: TabBarViewPresenterProtocol {
     
     weak var view: TabBarViewProtocol?

@@ -21,6 +21,10 @@ class ProfileManager {
     // раньше: порядок элементов был неявным договором менеджера с экраном, и
     // перестановка двух строк тихо меняла бы подписи на чужие значения. Модель для
     // этого и заведена.
+    /// Слушает **свой** документ профиля — не всю коллекцию.
+    ///
+    /// Живые обновления здесь по делу: правку в другом месте (или смену аватара) экран
+    /// показывает без перезахода.
     func getActiveUser(completion: @escaping (ActiveUser) -> Void) {
         guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
 
@@ -41,6 +45,7 @@ class ProfileManager {
             }
     }
 
+    /// Снимает слушатель.
     func stopObserving() {
         listener?.remove()
         listener = nil

@@ -13,8 +13,13 @@ import FirebaseFirestore
 // срабатывает лишь на явном входе, а сессия Firebase живёт месяцами — человек с
 // давней сессией так и остался бы без опубликованного ключа, и запечатать для него
 // ключ диалога никто бы не смог.
+/// Публикация своего открытого ключа в профиль.
 enum IdentityPublisher {
 
+    /// Кладёт открытый ключ в `users/{uid}.publicKey`, если там ещё не он.
+    ///
+    /// Вызывается при каждом запуске приложения — почему именно так, см. выше.
+    /// Молчит, если профиля нет или ключ уже опубликован.
     static func publishIfNeeded() {
         guard let uid = FirebaseManager.shared.getUser()?.uid,
               let publicKey = PublicKeyDirectory.own(uid: uid) else { return }

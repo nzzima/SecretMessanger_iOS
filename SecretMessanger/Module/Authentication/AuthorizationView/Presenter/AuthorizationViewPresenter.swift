@@ -8,7 +8,10 @@
 import Foundation
 import UIKit
 
+/// Вход: проверяет поля и показывает ошибку на экране, а не в консоли.
 protocol AuthorizationViewPresenterProtocol: AnyObject {
+    /// Кривая почта, короткий пароль, неверный пароль и обрыв сети — всё это разные
+    /// сообщения. Молчащая кнопка «Войти» в этом проекте выпалывалась трижды.
     func signIn(userInfo: UserInfo)
 }
 

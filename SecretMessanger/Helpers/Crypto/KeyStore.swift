@@ -20,6 +20,10 @@ import CryptoKit
 //
 // Доступность — `AfterFirstUnlock`, а не `WhenUnlocked`: синхронизируемые элементы не
 // бывают `ThisDeviceOnly`, а читать сообщения нужно и когда экран заперт.
+/// Постоянный ключ пользователя в Keychain.
+///
+/// Приватная половина не покидает устройство и iCloud Keychain; открытая публикуется в
+/// профиле — этим занимается ``IdentityPublisher``.
 enum KeyStore {
 
     private static let service = "nzzima.SecretMessanger.identity"
@@ -27,6 +31,11 @@ enum KeyStore {
     //MARK: Ключ заведён на uid, а не один на устройство: на симуляторе (да и на
     // телефоне) под приложением сменяется несколько аккаунтов, и переписка каждого
     // должна остаться читаемой.
+    /// Отдаёт постоянный ключ пользователя, а если его ещё нет — заводит и сохраняет.
+    ///
+    /// - Parameter uid: ключ заведён на аккаунт, а не на устройство: под приложением
+    ///   сменяется несколько аккаунтов, и переписка каждого должна остаться читаемой.
+    /// - Returns: `nil`, только если Keychain отказал в записи.
     static func identityKey(for uid: String) -> Curve25519.KeyAgreement.PrivateKey? {
         if let existing = load(uid: uid) {
             return existing

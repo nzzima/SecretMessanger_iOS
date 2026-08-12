@@ -20,11 +20,18 @@ enum AuthenticationError: LocalizedError {
     }
 }
 
+/// Вход по почте и паролю.
 class AuthenticationManager {
 
     private let ref = Firestore.firestore()
     private let registry = LoginRegistry()
 
+    /// Входит в аккаунт и следом дотягивает профиль.
+    ///
+    /// - Note: сорванная синхронизация профиля **не отменяет вход**. Firestore
+    ///   поднимается позже Auth, и первый запрос после запуска регулярно падает в
+    ///   `client is offline`; держать человека на экране входа из-за этого неправильно —
+    ///   аутентификация состоялась, профиль допишется при следующем входе.
     func auth(userInfo: UserInfo, completion: @escaping (Result<Bool, Error>) -> Void) {
         Auth.auth().signIn(withEmail: userInfo.email, password: userInfo.password) { [weak self] result, err in
             if let err {
@@ -59,6 +66,11 @@ class AuthenticationManager {
     // профиля. Профиль заводит экран регистрации, а этот метод чинит всё, что мимо
     // него: аккаунты из консоли, регистрацию, оборвавшуюся на записи профиля,
     // и логины, заведённые до появления реестра.
+    /// Заводит недостающий профиль и занимает логин, если он ещё не в реестре.
+    ///
+    /// Через это доезжают до реестра старые аккаунты и доигрывается регистрация,
+    /// оборвавшаяся на записи профиля. Занятое кем-то имя приводит к молчаливому
+    /// переименованию — с хвостом из uid.
     private func ensureProfile(for user: User, completion: @escaping (Result<String, Error>) -> Void) {
         let document = ref.collection(.users).document(user.uid)
 

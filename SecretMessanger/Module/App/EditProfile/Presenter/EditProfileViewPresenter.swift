@@ -7,9 +7,16 @@
 
 import UIKit
 
+/// Форма правки своего профиля.
 protocol EditProfileViewPresenterProtocol: AnyObject {
+    /// Есть ли что убирать: от этого зависит пункт «Убрать фото» в меню.
     var hasAvatar: Bool { get }
+
+    /// Сохраняет поля. Логин при изменении переносится в реестре занятых имён.
     func save(login: String, name: String, someInfo: String)
+
+    /// Меняет аватар **сразу**, не дожидаясь «Сохранить»: он лежит в своём документе и
+    /// ни с чем не связан, а ошибка валидации логина иначе теряла бы выбранное фото.
     func changeAvatar(_ image: UIImage)
     func removeAvatar()
 }

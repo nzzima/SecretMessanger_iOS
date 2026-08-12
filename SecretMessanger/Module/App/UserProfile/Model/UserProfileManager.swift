@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseFirestore
 
+/// Профиль собеседника — один документ, а не вся коллекция.
 class UserProfileManager {
 
     private let ref = Firestore.firestore()
@@ -15,6 +16,7 @@ class UserProfileManager {
 
     //MARK: Слушаем один документ, а не всю коллекцию users: профиль обновится, если
     // собеседник поменяет имя или заметку, и при этом не тянем чужие профили.
+    /// Слушает профиль конкретного человека: сменит имя или заметку — экран обновится.
     func observeProfile(userId: String, completion: @escaping (Result<ProfileInfo, Error>) -> Void) {
         listener?.remove()
 
@@ -33,6 +35,7 @@ class UserProfileManager {
             }
     }
 
+    /// Снимает слушатель.
     func stopObserving() {
         listener?.remove()
         listener = nil

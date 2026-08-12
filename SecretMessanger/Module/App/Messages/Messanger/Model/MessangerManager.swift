@@ -9,6 +9,7 @@ import UIKit
 import CoreLocation
 import FirebaseFirestore
 
+/// Всё, что переписка делает с базой: слушатели, отправка и вложения.
 class MessangerManager {
 
     private let ref = Firestore.firestore()
@@ -24,13 +25,15 @@ class MessangerManager {
 
     private var accessLostHandled = false
 
-    //MARK: Шапку диалога заводим до того, как подписываться на сообщения. Правила
-    // берут состав участников из неё через `get()`, а `get()` по несуществующему
-    // документу роняет проверку: в только что созданном чате слушатель получал бы
-    // «Missing or insufficient permissions» и умирал насовсем.
-    //
-    // Здесь же рождается ключ диалога — до первого сообщения, иначе шифровать было бы
-    // нечем.
+    //MARK: Здесь же рождается ключ диалога — до первого сообщения, иначе шифровать
+    // было бы нечем.
+    /// Заводит шапку диалога до подписки на сообщения — и это не порядок ради порядка.
+    ///
+    /// Правила читают состав участников из шапки через `get()`, а `get()` по
+    /// несуществующему документу роняет всю проверку: слушатель в новом чате получал бы
+    /// `Missing or insufficient permissions` и умирал насовсем.
+    ///
+    /// Заодно раздаёт ключ диалога тем, у кого записи ещё нет.
     func ensureConversation(chat: Chat, completion: @escaping () -> Void) {
         let document = ref.collection(.conversation).document(chat.id)
 
@@ -162,6 +165,7 @@ class MessangerManager {
     // ходу, и добавленный участник должен появиться в заголовке и в подписях к
     // сообщениям без перезахода в чат. Через неё же приезжает новая версия ключа
     // после ротации.
+    /// Слушает шапку: состав, имена и ключи меняются при живом экране.
     func observeConversation(chat: Chat, completion: @escaping (Chat) -> Void) {
         conversationListener?.remove()
 
@@ -185,6 +189,10 @@ class MessangerManager {
             }
     }
 
+    /// Слушает последние сообщения диалога.
+    ///
+    /// - Note: `limit(toLast:)`, а не `limit(to:)` — второй отдал бы **первые** полсотни
+    ///   сообщений, то есть самые старые.
     func observeMessages(convoId: String, completion: @escaping ([Message]) -> Void) {
         messagesListener?.remove()
 
@@ -235,6 +243,7 @@ class MessangerManager {
         }
     }
 
+    /// Снимает оба слушателя — шапки и сообщений.
     func stopObserving() {
         messagesListener?.remove()
         messagesListener = nil
@@ -250,6 +259,11 @@ class MessangerManager {
     //
     // Звук пишется первым: сообщение появляется у собеседника мгновенно через
     // слушателя, и к этому моменту играть уже должно быть что.
+    /// Отправляет голосовое: запись шифруется и ложится в подколлекцию `audio`.
+    ///
+    /// В самом сообщении остаётся только длительность — её хватает, чтобы сверстать
+    /// ячейку. Байты в сообщении означали бы мегабайты на каждое открытие любого чата:
+    /// подписка перечитывает последние полсотни сообщений при каждом изменении.
     func sendVoice(url: URL, duration: TimeInterval, chat: Chat, completion: @escaping (Error?) -> Void) {
         guard let raw = try? Data(contentsOf: url) else {
             completion(VoiceRecorderError.failed)
@@ -367,6 +381,13 @@ class MessangerManager {
     // не про порядок в базе: чат держит последние 50 сообщений и перечитывает их при
     // каждом изменении, так что снимок внутри сообщения означал бы мегабайты трафика на
     // каждое чужое «привет».
+    /// Отправляет фото: подгоняет под бюджет, шифрует и кладёт в подколлекцию `images`.
+    ///
+    /// В сообщении едут размеры — иначе пузырь не сверстать до загрузки, и переписка
+    /// прыгала бы по мере прихода картинок.
+    ///
+    /// - Returns: через `completion` — ``PhotoEncoderError/tooLarge``, если снимок не
+    ///   уместился даже после трёх заходов сжатия.
     func sendPhoto(_ image: UIImage, chat: Chat, completion: @escaping (Error?) -> Void) {
         guard let key = crypto.currentKey(for: chat) else {
             completion(ConversationCryptoError.noKey)
@@ -447,6 +468,11 @@ class MessangerManager {
     // ключом — в базу уходит шифротекст, по которому не сказать даже, что это координаты.
     //
     // Ключ обязателен, как у фото: положить в базу открытую точку на карте мы не станем.
+    /// Отправляет точку на карте.
+    ///
+    /// Единственное вложение без своей подколлекции: две координаты помещаются в само
+    /// сообщение. Шифруются они как текст, поэтому в базе не видно ни места, ни того,
+    /// что это вообще место.
     func sendLocation(_ location: CLLocation, chat: Chat, completion: @escaping (Error?) -> Void) {
         guard let payload = crypto.encrypt(Place.payload(for: location), chat: chat),
               let preview = crypto.encrypt(MessangerManager.locationPreview, chat: chat) else {
@@ -473,6 +499,10 @@ class MessangerManager {
     //
     // Версия ключа приходит от сообщения, а не берётся текущая: после ротации (кого-то
     // удалили из группы) текущий ключ старое фото не откроет.
+    /// Скачивает и расшифровывает снимок — по появлению ячейки, а не при открытии чата.
+    ///
+    /// - Parameter version: версия ключа **самого сообщения**. После ротации снимки,
+    ///   отправленные раньше, открываются только прежним ключом.
     func loadPhoto(messageId: String,
                    version: Int,
                    chat: Chat,
@@ -517,6 +547,10 @@ class MessangerManager {
     //MARK: Версия ключа берётся у самого сообщения: текущая после ротации открывает
     // только то, что записано после неё, а голосовое, отправленное до удаления
     // участника, запечатано предыдущей.
+    /// Скачивает голосовое и кладёт расшифрованное во временный файл.
+    ///
+    /// Файл нужен потому, что `AVAudioPlayer` играет из файла, а не из байтов — в
+    /// отличие от фото, которое так и остаётся в памяти.
     func loadVoice(messageId: String, version: Int, chat: Chat, completion: @escaping (Result<URL, Error>) -> Void) {
         let url = Voice.cacheURL(messageId: messageId)
 

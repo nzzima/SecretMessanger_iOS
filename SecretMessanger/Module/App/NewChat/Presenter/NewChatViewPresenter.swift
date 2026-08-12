@@ -10,18 +10,29 @@ import Foundation
 //MARK: Экран один на два случая, потому что действие одно: отметить людей в списке
 // контактов. Дальше расходится только результат — новый чат или добавление в
 // существующую группу, — и решает это тот, кто экран открыл.
+/// Зачем открыт экран выбора контактов.
 enum NewChatMode {
+    /// Завести переписку: один отмеченный — диалог, несколько — группа.
     case create
+
+    /// Добавить людей в существующую группу.
     case addMembers(excluded: Set<String>, onAdd: ([ChatUser]) -> Void)
 }
 
+/// Выбор контактов галочками — один экран на два случая.
 protocol NewChatViewPresenterProtocol: AnyObject {
     var users: [ChatUser] { get }
     var selectedCount: Int { get }
+
+    /// Каким открыт экран: от этого зависит заголовок и надпись на кнопке.
     var isAddingMembers: Bool { get }
     func isSelected(at index: Int) -> Bool
     func toggleSelection(at index: Int)
+
+    /// Собирает диалог из отмеченных. `nil` — не отмечено никого.
     func makeChat() -> Chat?
+
+    /// Отдаёт отмеченных тому, кто открыл экран ради добавления.
     func addSelected()
 }
 

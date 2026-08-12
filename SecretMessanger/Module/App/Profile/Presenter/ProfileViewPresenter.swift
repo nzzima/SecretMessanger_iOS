@@ -7,7 +7,9 @@
 
 import UIKit
 
+/// Свой профиль. Слушает документ, поэтому правка видна без перезахода.
 protocol ProfileViewPresenterProtocol: AnyObject {
+    /// `nil` — профиль ещё не пришёл; экран показывает пустую таблицу, а не пустые поля.
     var activeUser: ActiveUser? { get }
     var avatar: UIImage? { get }
 }

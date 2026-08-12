@@ -7,8 +7,16 @@
 
 import Foundation
 
+/// Регистрация: почта, логин и пароль дважды.
 protocol RegistrationViewPresenterProtocol: AnyObject {
+    /// - Parameter passwordRepeat: повтор здесь не украшение: опечатка стоит дороже,
+    ///   чем при входе, — аккаунт уже создан, а войти в него не выйдет.
     func register(email: String, login: String, password: String, passwordRepeat: String)
+
+    /// «Ок» на «Аккаунт создан» — открывает приложение.
+    ///
+    /// Возврата на экран входа нет намеренно: `createUser` уже залогинил человека, и
+    /// отправлять его авторизоваться значило бы просить пароль в третий раз.
     func didConfirmRegistration()
     func goToAuthorization()
 }

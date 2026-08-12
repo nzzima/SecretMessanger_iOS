@@ -17,6 +17,7 @@
 
 /* Begin PBXFileReference section */
 		8E5865762D48F418003EBFF1 /* SecretMessanger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretMessanger.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA00000200000000000000AA /* SecretMessangerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretMessangerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -38,6 +39,11 @@
 			path = SecretMessanger;
 			sourceTree = "<group>";
 		};
+		AA00000300000000000000AA /* SecretMessangerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SecretMessangerTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +60,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA00000500000000000000AA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -61,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				8E5865E22D48FFCC003EBFF1 /* SecretMessanger */,
+				AA00000300000000000000AA /* SecretMessangerTests */,
 				8E7853402D4CC3A9000D35E7 /* Frameworks */,
 				8E5865772D48F418003EBFF1 /* Products */,
 			);
@@ -70,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				8E5865762D48F418003EBFF1 /* SecretMessanger.app */,
+				AA00000200000000000000AA /* SecretMessangerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -112,7 +127,40 @@
 			productReference = 8E5865762D48F418003EBFF1 /* SecretMessanger.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA00000100000000000000AA /* SecretMessangerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA00000B00000000000000AA /* Build configuration list for PBXNativeTarget "SecretMessangerTests" */;
+			buildPhases = (
+				AA00000400000000000000AA /* Sources */,
+				AA00000500000000000000AA /* Frameworks */,
+				AA00000600000000000000AA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AA00000700000000000000AA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AA00000300000000000000AA /* SecretMessangerTests */,
+			);
+			name = SecretMessangerTests;
+			packageProductDependencies = (
+			);
+			productName = SecretMessangerTests;
+			productReference = AA00000200000000000000AA /* SecretMessangerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		AA00000800000000000000AA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8E58656E2D48F418003EBFF1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8E5865752D48F418003EBFF1;
+			remoteInfo = SecretMessanger;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		8E58656E2D48F418003EBFF1 /* Project object */ = {
@@ -124,6 +172,10 @@
 				TargetAttributes = {
 					8E5865752D48F418003EBFF1 = {
 						CreatedOnToolsVersion = 16.0;
+					};
+					AA00000100000000000000AA = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 8E5865752D48F418003EBFF1;
 					};
 				};
 			};
@@ -146,12 +198,28 @@
 			projectRoot = "";
 			targets = (
 				8E5865752D48F418003EBFF1 /* SecretMessanger */,
+				AA00000100000000000000AA /* SecretMessangerTests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXTargetDependency section */
+		AA00000700000000000000AA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8E5865752D48F418003EBFF1 /* SecretMessanger */;
+			targetProxy = AA00000800000000000000AA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin PBXResourcesBuildPhase section */
 		8E5865742D48F418003EBFF1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA00000600000000000000AA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -162,6 +230,13 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		8E5865722D48F418003EBFF1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA00000400000000000000AA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -364,6 +439,44 @@
 			};
 			name = Release;
 		};
+		AA00000900000000000000AA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 69JSYK84ZC;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = nzzima.SecretMessangerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SecretMessanger.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SecretMessanger";
+			};
+			name = Debug;
+		};
+		AA00000A00000000000000AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 69JSYK84ZC;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = nzzima.SecretMessangerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SecretMessanger.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SecretMessanger";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -381,6 +494,15 @@
 			buildConfigurations = (
 				8E58658A2D48F419003EBFF1 /* Debug */,
 				8E58658B2D48F419003EBFF1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA00000B00000000000000AA /* Build configuration list for PBXNativeTarget "SecretMessangerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA00000900000000000000AA /* Debug */,
+				AA00000A00000000000000AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

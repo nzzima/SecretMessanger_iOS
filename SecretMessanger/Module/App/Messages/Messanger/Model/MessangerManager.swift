@@ -16,6 +16,14 @@ class MessangerManager {
     private var messagesListener: ListenerRegistration?
     private var conversationListener: ListenerRegistration?
 
+    //MARK: Участника вычеркнули из состава — правила отказывают его слушателям в тот
+    // же миг. Снапшоты перестают приходить, и экран замирает: сообщения не обновляются,
+    // отправка молча не доходит, а выглядит всё как обычная переписка. Отказ по правам
+    // поэтому идёт отдельным сигналом наверх, а не строкой в консоли.
+    var onAccessLost: (() -> Void)?
+
+    private var accessLostHandled = false
+
     //MARK: Шапку диалога заводим до того, как подписываться на сообщения. Правила
     // берут состав участников из неё через `get()`, а `get()` по несуществующему
     // документу роняет проверку: в только что созданном чате слушатель получал бы
@@ -160,11 +168,15 @@ class MessangerManager {
         conversationListener = ref
             .collection(.conversation)
             .document(chat.id)
-            .addSnapshotListener { snap, err in
+            .addSnapshotListener { [weak self] snap, err in
                 if let err {
-                    print("Шапка диалога не читается: \(err.localizedDescription)")
+                    self?.handleListenerError(err, convoId: chat.id, what: "Шапка диалога")
                     return
                 }
+
+                //MARK: Шапка прочиталась — значит мы в составе, и отметка о выходе
+                // из этого диалога устарела.
+                ChatExit.forget(chat.id)
 
                 guard let data = snap?.data(),
                       let updated = Chat(id: chat.id, selfId: chat.selfId, data: data) else { return }
@@ -182,9 +194,9 @@ class MessangerManager {
             .collection(.messages)
             .order(by: "date")
             .limit(toLast: 50)
-            .addSnapshotListener { snap, err in
+            .addSnapshotListener { [weak self] snap, err in
                 if let err {
-                    print("Сообщения не загрузились: \(err.localizedDescription)")
+                    self?.handleListenerError(err, convoId: convoId, what: "Сообщения")
                     return
                 }
 
@@ -192,6 +204,35 @@ class MessangerManager {
 
                 completion(docs.map { Message(messageId: $0.documentID, data: $0.data()) })
             }
+    }
+
+    //MARK: `permissionDenied` от слушателя означает ровно одно: нас больше нет в
+    // составе диалога. Всё остальное — связь, и оно лечится само, поэтому уходит в
+    // консоль, как и раньше.
+    private func handleListenerError(_ error: Error, convoId: String, what: String) {
+        let error = error as NSError
+
+        guard error.domain == FirestoreErrorDomain,
+              error.code == FirestoreErrorCode.permissionDenied.rawValue else {
+            print("\(what) не читаются: \(error.localizedDescription)")
+            return
+        }
+
+        //MARK: Флаг ставим до всех проверок: слушателей два, отказ приходит каждому,
+        // и без него сообщение задвоилось бы, а отметку о добровольном выходе снял бы
+        // первый — второй счёл бы тот же выход удалением.
+        guard !accessLostHandled else { return }
+        accessLostHandled = true
+
+        //MARK: Слушатели снимаем сами: после отказа они уже ничего не принесут, а
+        // висеть до закрытия экрана будут.
+        stopObserving()
+
+        guard !ChatExit.wasVoluntary(convoId) else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.onAccessLost?()
+        }
     }
 
     func stopObserving() {

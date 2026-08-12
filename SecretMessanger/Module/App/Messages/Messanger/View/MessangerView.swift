@@ -16,6 +16,8 @@ protocol MessangerViewProtocol: AnyObject {
     func reloadTitle()
     func recordingStarted()
     func recordingStopped()
+    func microphoneGranted()
+    func accessLost()
     func locationSearchStarted()
     func locationSearchStopped()
     func confirmApproximateLocation(onSend: @escaping () -> Void)
@@ -27,6 +29,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     var presenter: MessangerViewPresenterProtocol!
 
     private var recordingTimer: Timer?
+    private var hintTimer: Timer?
 
     //MARK: Микрофон стоит справа, рядом с отправкой: и то и другое — «отправить сейчас»,
     // а слева живут вложения. Запись идёт по удержанию: у голосового нет состояния
@@ -170,6 +173,11 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     //MARK: Подпись занимает место поля ввода, а не встаёт рядом: панель и без того тесная,
     // а печатать во время записи или поиска всё равно не выйдет.
     private func showStatus(_ text: String, color: UIColor) {
+        //MARK: Всякий новый статус отменяет подсказку: иначе её таймер, дотикав,
+        // погасил бы уже чужую подпись — например, идущую запись.
+        hintTimer?.invalidate()
+        hintTimer = nil
+
         statusLabel.text = text
         statusLabel.textColor = color
         statusLabel.isHidden = false
@@ -178,8 +186,26 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     }
 
     private func hideStatus() {
+        hintTimer?.invalidate()
+        hintTimer = nil
+
         statusLabel.isHidden = true
         messageInputBar.inputTextView.isHidden = false
+    }
+
+    //MARK: Подсказка, в отличие от записи и поиска геопозиции, не состояние, а ответ
+    // на только что случившееся — поэтому уходит сама, без второго события.
+    private func showHint(_ text: String) {
+        showStatus(text, color: .lightGray)
+
+        hintTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
+            self?.hideStatus()
+        }
+    }
+
+    deinit {
+        recordingTimer?.invalidate()
+        hintTimer?.invalidate()
     }
 
     @objc private func handleMic(_ gesture: UILongPressGestureRecognizer) {
@@ -210,6 +236,28 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
         hideStatus()
         micButton.tintColor = .systemBlue
+    }
+
+    //MARK: Первое удержание уходит на системное окно с вопросом про микрофон, и
+    // записи от него не остаётся. Раньше на этом всё и заканчивалось — кнопка
+    // выглядела сломанной; теперь панель прямо говорит, что делать дальше.
+    func microphoneGranted() {
+        showHint("Микрофон разрешён — удерживайте, чтобы записать")
+    }
+
+    //MARK: Нас удалили из группы. Слушатели уже получили отказ и сняты, так что экран
+    // всё равно замер: новых сообщений не будет, отправленное не дойдёт. Показываем
+    // это словами и уводим к списку чатов — туда же, куда уводит выход по своей воле.
+    //
+    // Алерт показываем с верхнего экрана: удалить могли и в тот момент, когда человек
+    // смотрит «Участников», а он открыт поверх переписки.
+    func accessLost() {
+        let top = navigationController?.topViewController ?? self
+
+        top.showAlert(title: "Вас удалили из группы",
+                      message: "Её переписка вам больше не видна.") { [weak self] in
+            self?.navigationController?.popToRootViewController(animated: true)
+        }
     }
 
     // MARK: - Поиск геопозиции

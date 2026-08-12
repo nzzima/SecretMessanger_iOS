@@ -41,6 +41,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     private(set) var messages: [Message] = []
 
     private var isSharingLocation = false
+    private var isAskingMicrophone = false
 
     var title: String { chat.title }
     var isGroup: Bool { chat.isGroup }
@@ -74,6 +75,12 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     }
 
     private func start() {
+        //MARK: Отказ по правам приходит сюда: нас удалили из группы, и дальше экран
+        // всё равно ничего не покажет и ничего не отправит.
+        messangerManager.onAccessLost = { [weak self] in
+            self?.view?.accessLost()
+        }
+
         messangerManager.ensureConversation(chat: chat) { [weak self] in
             self?.observeConversation()
             self?.observeMessages()
@@ -168,6 +175,47 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
             return
         }
 
+        switch recorder.access {
+        case .granted:
+            record()
+        case .denied:
+            view?.showError(VoiceRecorderError.microphoneDenied.localizedDescription)
+        case .undetermined:
+            askMicrophone()
+        }
+    }
+
+    //MARK: Разрешение спрашивалось внутри старта записи — и первое удержание уходило
+    // на него целиком: системное окно перехватывает касание, палец отпускают уже на
+    // нём, а запись не начиналась. Со стороны это выглядело сломанной кнопкой, ровно
+    // тем молчаливым отказом, который в этом проекте выпалывали уже трижды.
+    //
+    // Спросить заранее, при открытии чата, было бы проще всего — но это разрешение,
+    // которое просят до того, как оно понадобилось. Поэтому первое удержание честно
+    // занимается разрешением и говорит, что делать дальше.
+    private func askMicrophone() {
+        guard !isAskingMicrophone else { return }
+
+        isAskingMicrophone = true
+
+        recorder.requestAccess { [weak self] granted in
+            guard let self else { return }
+
+            self.isAskingMicrophone = false
+
+            guard granted else {
+                self.view?.showError(VoiceRecorderError.microphoneDenied.localizedDescription)
+                return
+            }
+
+            //MARK: Записывать отсюда нечего: пока человек отвечал системе, кнопку он
+            // отпустил, и запись пошла бы без единого нажатого пальца — остановить её
+            // было бы уже нечем.
+            self.view?.microphoneGranted()
+        }
+    }
+
+    private func record() {
         VoicePlayer.shared.stop()
 
         recorder.start { [weak self] err in

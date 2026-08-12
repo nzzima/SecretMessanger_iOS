@@ -51,12 +51,28 @@ class EditProfileManager {
               completion: @escaping (Error?) -> Void) {
         guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
 
+        //MARK: Логин в шапках диалогов — кэш, и после переименования его надо
+        // разослать. Считаем это здесь, до всех веток: дальше `currentLogin` уже не
+        // с чем сравнивать, а изменившийся только регистром логин («red» → «Red»)
+        // собеседники тоже должны увидеть новым.
+        let renamed = login != currentLogin
+
+        //MARK: Своё имя рассылается по диалогам после успеха любой из веток ниже,
+        // поэтому дальше идёт эта обёртка, а не сам `completion`.
+        let finish: (Error?) -> Void = { [weak self] err in
+            if err == nil, renamed {
+                self?.rename(uid: uid, to: login)
+            }
+
+            completion(err)
+        }
+
         guard LoginRegistry.key(for: login) != LoginRegistry.key(for: currentLogin) else {
             //MARK: Логин не менялся — либо изменился только регистр, а он в ключ
             // реестра не входит. Занимать нечего и отпускать нечего: та же запись
             // реестра, что и была, продолжает держать имя за нами. Пойди мы общим
             // путём, последним шагом мы бы удалили собственный захват.
-            write(uid: uid, login: login, name: name, someInfo: someInfo, completion: completion)
+            write(uid: uid, login: login, name: name, someInfo: someInfo, completion: finish)
             return
         }
 
@@ -65,24 +81,24 @@ class EditProfileManager {
 
             switch result {
             case .failure(let err):
-                completion(err)
+                finish(err)
             case .success(.taken):
-                completion(LoginRegistryError.taken)
+                finish(LoginRegistryError.taken)
             case .success(.mine):
                 //MARK: Имя уже наше — так выглядит повторная попытка после обрыва.
                 self.writeAndRelease(uid: uid, login: login, name: name,
                                      someInfo: someInfo, oldLogin: currentLogin,
-                                     completion: completion)
+                                     completion: finish)
             case .success(.free):
                 self.registry.claim(login: login, uid: uid) { err in
                     guard err == nil else {
-                        completion(err)
+                        finish(err)
                         return
                     }
 
                     self.writeAndRelease(uid: uid, login: login, name: name,
                                          someInfo: someInfo, oldLogin: currentLogin,
-                                         completion: completion)
+                                         completion: finish)
                 }
             }
         }
@@ -107,6 +123,47 @@ class EditProfileManager {
                 completion(nil)
             }
         }
+    }
+
+    //MARK: Разовый проход по своим диалогам после переименования. Карта `logins` в
+    // шапке — кэш имён, и своё имя туда пишется при открытии диалога и при отправке:
+    // без этого прохода переименовавшийся оставался бы под старым именем во всех
+    // чатах, куда он с тех пор не заходил, — и узнать об этом мог бы только от
+    // собеседника.
+    //
+    // Правила такую запись пропускают как обычную: состав, создатель и ключи не
+    // тронуты, а участник шапку писать вправе — ровно то же самое делает отправка
+    // сообщения.
+    private func rename(uid: String, to login: String) {
+        ref
+            .collection(.conversation)
+            .whereField(.users, arrayContains: uid)
+            .getDocuments { [weak self] snap, err in
+                guard let self, let documents = snap?.documents, !documents.isEmpty else {
+                    if let err {
+                        print("Диалоги для переименования не прочитались: \(err.localizedDescription)")
+                    }
+
+                    return
+                }
+
+                //MARK: Батчем, а не по одной записи: диалогов может быть много, и
+                // растягивать переименование на десятки отдельных запросов незачем.
+                let batch = self.ref.batch()
+
+                documents.forEach {
+                    batch.updateData(["logins.\(uid)": login], forDocument: $0.reference)
+                }
+
+                batch.commit { err in
+                    //MARK: Неудача здесь не отменяет переименования — оно уже
+                    // состоялось в профиле и в реестре. Имя в этих диалогах просто
+                    // догонит по-старому, при следующем открытии или отправке.
+                    if let err {
+                        print("Имя в диалогах не обновилось: \(err.localizedDescription)")
+                    }
+                }
+            }
     }
 
     private func write(uid: String, login: String, name: String, someInfo: String,

@@ -22,6 +22,12 @@ enum VoiceRecorderError: LocalizedError {
     }
 }
 
+enum MicrophoneAccess {
+    case granted
+    case denied
+    case undetermined
+}
+
 final class VoiceRecorder: NSObject {
 
     //MARK: Потолок жёсткий, и держит он не вежливость, а лимит документа Firestore в
@@ -51,48 +57,57 @@ final class VoiceRecorder: NSObject {
 
     var currentTime: TimeInterval { recorder?.currentTime ?? 0 }
 
-    func requestPermission(completion: @escaping (Bool) -> Void) {
+    //MARK: Состояние разрешения читается отдельно от запроса, и это не педантизм:
+    // запрос показывает системное окно, а окно перехватывает удержание кнопки, из-за
+    // которого запись и затевалась. Кто спрашивает — решает экран, а не рекордер.
+    var access: MicrophoneAccess {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: return .granted
+        case .denied: return .denied
+        default: return .undetermined
+        }
+    }
+
+    func requestAccess(completion: @escaping (Bool) -> Void) {
         AVAudioApplication.requestRecordPermission { granted in
             DispatchQueue.main.async { completion(granted) }
         }
     }
 
     func start(completion: @escaping (Error?) -> Void) {
-        requestPermission { [weak self] granted in
-            guard let self else { return }
+        //MARK: Разрешение к этому моменту уже получено — спрашивать его здесь значило
+        // бы снова отобрать удержание у записи.
+        guard access == .granted else {
+            completion(VoiceRecorderError.microphoneDenied)
+            return
+        }
 
-            guard granted else {
-                completion(VoiceRecorderError.microphoneDenied)
+        do {
+            //MARK: `.defaultToSpeaker` обязателен: без него `.playAndRecord`
+            // отправляет звук в разговорный динамик, и воспроизведение потом
+            // еле слышно — телефон будто сломан.
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true)
+
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension("m4a")
+
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.delegate = self
+
+            guard recorder.record(forDuration: VoiceRecorder.maxDuration) else {
+                completion(VoiceRecorderError.failed)
                 return
             }
 
-            do {
-                //MARK: `.defaultToSpeaker` обязателен: без него `.playAndRecord`
-                // отправляет звук в разговорный динамик, и воспроизведение потом
-                // еле слышно — телефон будто сломан.
-                let session = AVAudioSession.sharedInstance()
-                try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth])
-                try session.setActive(true)
+            self.recorder = recorder
+            self.url = url
 
-                let url = FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString)
-                    .appendingPathExtension("m4a")
-
-                let recorder = try AVAudioRecorder(url: url, settings: self.settings)
-                recorder.delegate = self
-
-                guard recorder.record(forDuration: VoiceRecorder.maxDuration) else {
-                    completion(VoiceRecorderError.failed)
-                    return
-                }
-
-                self.recorder = recorder
-                self.url = url
-
-                completion(nil)
-            } catch {
-                completion(error)
-            }
+            completion(nil)
+        } catch {
+            completion(error)
         }
     }
 

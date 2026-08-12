@@ -15,9 +15,21 @@ protocol ProfileViewProtocol: AnyObject {
 class ProfileView: UIViewController, ProfileViewProtocol {
     
     var presenter: ProfileViewPresenterProtocol!
-    
-    let titleInfoCell = ["Идентификатор", "Логин", "Имя", "Заметка"]
-    
+
+    //MARK: Подпись и значение стоят рядом, в одной строке кода. Раньше подписи лежали
+    // здесь массивом, а значения приходили из менеджера другим массивом, и совпадали
+    // они только порядком — договором, который ничто не проверяло.
+    private var rows: [(title: String, value: String)] {
+        guard let user = presenter.activeUser else { return [] }
+
+        return [
+            ("Идентификатор", user.id),
+            ("Логин", user.login),
+            ("Имя", user.name),
+            ("Заметка", user.someInfo)
+        ]
+    }
+
     lazy var imageView: UIImageView = {
         $0.image = UIImage(named: "basicUserImage")
         $0.contentMode = .scaleAspectFill
@@ -108,19 +120,20 @@ class ProfileView: UIViewController, ProfileViewProtocol {
 
 extension ProfileView: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        presenter.activeUser.count
+        rows.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        
+        let row = rows[indexPath.row]
+
         cell.backgroundColor = .black
         cell.selectionStyle = .none
-        
+
         var config = cell.defaultContentConfiguration()
-        
-        config.text = titleInfoCell[indexPath.item]
-        config.secondaryText = presenter.activeUser[indexPath.item]
+
+        config.text = row.title
+        config.secondaryText = row.value
         config.secondaryTextProperties.color = .white
         config.secondaryTextProperties.font = .systemFont(ofSize: 18)
         config.textProperties.color = .gray

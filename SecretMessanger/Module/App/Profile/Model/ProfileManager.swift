@@ -17,7 +17,11 @@ class ProfileManager {
     //MARK: Профиль лежит в users/{uid}, поэтому читаем один документ вместо того,
     // чтобы тянуть всю коллекцию и искать себя перебором. Слушатель здесь по делу:
     // экран должен показывать изменения профиля сразу после сохранения.
-    func getActiveUser(completion: @escaping ([String]) -> Void) {
+    //MARK: Отдаём `ActiveUser`, а не массив `[id, login, name, someInfo]`, как было
+    // раньше: порядок элементов был неявным договором менеджера с экраном, и
+    // перестановка двух строк тихо меняла бы подписи на чужие значения. Модель для
+    // этого и заведена.
+    func getActiveUser(completion: @escaping (ActiveUser) -> Void) {
         guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
 
         listener?.remove()
@@ -33,9 +37,7 @@ class ProfileManager {
 
                 guard let userData = snap?.data() else { return }
 
-                let user = ActiveUser(id: uid, userInfo: userData)
-
-                completion([user.id, user.login, user.name, user.someInfo])
+                completion(ActiveUser(id: uid, userInfo: userData))
             }
     }
 

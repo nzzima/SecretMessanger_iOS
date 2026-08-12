@@ -45,12 +45,22 @@ class ChatMembersManager {
     // трогаются намеренно — ротация при добровольном выходе не нужна, ушедший и так
     // читал всё, что видел, а перевыдать ключ оставшимся он права не имеет.
     func leave(chat: Chat, completion: @escaping (Error?) -> Void) {
+        //MARK: Отметка ставится до записи, а не после успеха: отказ прилетит
+        // слушателям переписки раньше, чем сюда вернётся подтверждение, и вышедший
+        // получил бы вдогонку «вас удалили из группы». Не прошло — снимаем: человек
+        // остался в составе.
+        ChatExit.mark(chat.id)
+
         ref
             .collection(.conversation)
             .document(chat.id)
             .setData([
                 "users": chat.members.filter { $0 != chat.selfId }
             ], merge: true) { err in
+                if err != nil {
+                    ChatExit.forget(chat.id)
+                }
+
                 completion(err)
             }
     }

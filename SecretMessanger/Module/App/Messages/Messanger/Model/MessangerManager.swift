@@ -320,7 +320,10 @@ class MessangerManager {
     /// - Parameters:
     ///   - preview: то, что покажет список: сам текст или пометка вроде «📷 Фото».
     ///   - encrypted: диалоги, начатые до шифрования, ключа не имеют и пишут открытым.
-    private func header(preview: String, chat: Chat, date: Date, encrypted: Bool) -> [String: Any] {
+    //MARK: Не `private` ровно затем, чтобы схему документа сторожили тесты: она — договор
+    // с правилами Firestore и со всеми, кто эти документы читает, и молча разъехаться ей
+    // нельзя. Снаружи модуля метод всё равно не виден.
+    func header(preview: String, chat: Chat, date: Date, encrypted: Bool) -> [String: Any] {
         var header: [String: Any] = [
             "logins": logins(of: chat),
             "lastMessage": preview,
@@ -337,8 +340,8 @@ class MessangerManager {
 
     /// Сам документ сообщения. `extra` — поля, которые есть только у своего вида:
     /// длительность у голосового, размеры у фото, тип у всего, кроме текста.
-    private func message(payload: String, chat: Chat, date: Date,
-                         encrypted: Bool, extra: [String: Any] = [:]) -> [String: Any] {
+    func message(payload: String, chat: Chat, date: Date,
+                 encrypted: Bool, extra: [String: Any] = [:]) -> [String: Any] {
         var message: [String: Any] = [
             "senderId": chat.selfId,
             "message": payload,

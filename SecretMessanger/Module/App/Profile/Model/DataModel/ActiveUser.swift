@@ -13,6 +13,10 @@ struct ActiveUser {
     var name: String
     var someInfo: String
 
+    //MARK: Номер версии аватара, а не сама картинка: байты лежат в `avatars/{uid}`,
+    // см. AvatarStore. Ноль — аватара нет, и в базу за ним никто не пойдёт.
+    var avatarVersion: Int
+
     init(id: String, userInfo: [String: Any]) {
         let name = userInfo["name"] as? String ?? ""
         let login = userInfo["login"] as? String ?? ""
@@ -21,5 +25,6 @@ struct ActiveUser {
         self.name = name
         self.someInfo = userInfo["someInfo"] as? String ?? ""
         self.login = login.isEmpty ? name : login
+        self.avatarVersion = userInfo["avatarVersion"] as? Int ?? 0
     }
 }

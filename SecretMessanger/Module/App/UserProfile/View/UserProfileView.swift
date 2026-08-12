@@ -10,6 +10,7 @@ import UIKit
 
 protocol UserProfileViewProtocol: AnyObject {
     func reloadProfile()
+    func reloadAvatar()
     func showError(_ message: String)
 }
 
@@ -76,6 +77,13 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
 
         //MARK: Профиль мог прийти до загрузки экрана — показываем то, что уже есть.
         reloadProfile()
+        reloadAvatar()
+    }
+
+    func reloadAvatar() {
+        guard isViewLoaded else { return }
+
+        imageView.image = presenter.avatar ?? UIImage(named: "basicUserImage")
     }
 
     @objc func goToMessanger(_ sender: UIButton) {

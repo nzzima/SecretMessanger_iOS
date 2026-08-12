@@ -5,11 +5,12 @@
 //  Created by Nikita Krylov on 21.02.2025.
 //
 
-import Foundation
+import UIKit
 
 protocol UserProfileViewPresenterProtocol: AnyObject {
     var title: String { get }
     var profile: ProfileInfo? { get }
+    var avatar: UIImage? { get }
     var chat: Chat? { get }
 }
 
@@ -22,6 +23,7 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
     private let fallbackLogin: String
 
     private(set) var profile: ProfileInfo?
+    private(set) var avatar: UIImage?
 
     //MARK: Пока профиль не подгрузился, заголовок берём из списка контактов —
     // экран не должен открываться безымянным.
@@ -61,8 +63,21 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let profile):
+                    let versionChanged = self.profile?.avatarVersion != profile.avatarVersion
+
                     self.profile = profile
                     self.view?.reloadProfile()
+
+                    //MARK: Профиль слушается — собеседник может сменить аватар прямо
+                    // при открытом экране. Перечитываем только на смену версии: тот же
+                    // снапшот приходит и на правку заметки, а картинка от этого не
+                    // меняется.
+                    guard versionChanged else { return }
+
+                    AvatarStore.shared.load(uid: self.userId, version: profile.avatarVersion) { [weak self] image in
+                        self?.avatar = image
+                        self?.view?.reloadAvatar()
+                    }
                 case .failure(let err):
                     self.view?.showError(err.localizedDescription)
                 }

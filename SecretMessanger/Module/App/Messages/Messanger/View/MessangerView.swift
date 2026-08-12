@@ -13,6 +13,7 @@ import InputBarAccessoryView
 
 protocol MessangerViewProtocol: AnyObject {
     func reloadCollection()
+    func reloadAvatars()
     func reloadTitle()
     func recordingStarted()
     func recordingStopped()
@@ -297,6 +298,13 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         messagesCollectionView.scrollToLastItem(animated: false)
     }
 
+    //MARK: Перерисовка без прокрутки к последнему сообщению — в отличие от
+    // `reloadCollection`. Аватары приезжают через секунду после открытия чата, и
+    // утаскивать человека вниз из-за картинки, которую он не просил, незачем.
+    func reloadAvatars() {
+        messagesCollectionView.reloadData()
+    }
+
     //MARK: Название группы — это её состав, поэтому оно меняется вместе с ним.
     func reloadTitle() {
         title = presenter.title
@@ -497,9 +505,16 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
         }
     }
 
+    //MARK: Аватар, а если его нет — первая буква имени, как и было. `set(avatar:)`
+    // сам выбирает одно из двух и, что важнее, перерисовывает картинку при
+    // переиспользовании ячейки: без него фото уехавшего вверх сообщения осталось бы
+    // висеть на чужом.
     func configureAvatarView(_ avatarView: AvatarView, for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
-        avatarView.initials = message.sender.displayName.first?.uppercased() ?? "?"
+        let initials = message.sender.displayName.first?.uppercased() ?? "?"
+        let image = presenter.avatar(for: message.sender.senderId)
+
         avatarView.backgroundColor = isFromSelf(message) ? .systemBlue : .darkGray
+        avatarView.set(avatar: Avatar(image: image, initials: initials))
     }
 
     private func isFromSelf(_ message: any MessageType) -> Bool {

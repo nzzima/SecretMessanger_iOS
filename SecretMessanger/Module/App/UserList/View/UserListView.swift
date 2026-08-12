@@ -84,7 +84,7 @@ extension UserListView: UITableViewDataSource {
         cell.selectionStyle = .none
         
         let cellItem = presenter.users[indexPath.row]
-        cell.configCell(cellItem.login)
+        cell.configCell(cellItem)
         
         return cell
     }

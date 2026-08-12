@@ -24,6 +24,7 @@ extension String {
     static let messages = "messages"
     static let audio = "audio"
     static let images = "images"
+    static let avatars = "avatars"
 }
 
 extension String {

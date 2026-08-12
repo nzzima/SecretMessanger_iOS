@@ -125,6 +125,23 @@ class EditProfileManager {
         }
     }
 
+    //MARK: Маркер аватара в профиле. Пишется он здесь, а не в `AvatarStore`, чтобы все
+    // записи в `users/{uid}` остались в одном месте — их стережёт правило `ownsLogin()`,
+    // и разбросанные по коду они однажды разошлись бы с ним.
+    //
+    // Слияние обязательно: правило смотрит на документ целиком, каким он станет после
+    // записи, и логин в нём должен остаться на месте.
+    func saveAvatarVersion(_ version: Int, completion: @escaping (Error?) -> Void) {
+        guard let uid = FirebaseManager.shared.getUser()?.uid else { return }
+
+        ref
+            .collection(.users)
+            .document(uid)
+            .setData(["avatarVersion": version], merge: true) { err in
+                completion(err)
+            }
+    }
+
     //MARK: Разовый проход по своим диалогам после переименования. Карта `logins` в
     // шапке — кэш имён, и своё имя туда пишется при открытии диалога и при отправке:
     // без этого прохода переименовавшийся оставался бы под старым именем во всех

@@ -23,6 +23,7 @@ protocol MessangerViewPresenterProtocol: AnyObject {
     func sendPhoto(_ image: UIImage)
     func loadPhoto(messageId: String, completion: @escaping (UIImage?) -> Void)
     func shareLocation()
+    func avatar(for uid: String) -> UIImage?
 }
 
 class MessangerViewPresenter: MessangerViewPresenterProtocol {
@@ -42,6 +43,11 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
     private var isSharingLocation = false
     private var isAskingMicrophone = false
+
+    //MARK: Аватары участников. В шапке диалога их нет и не будет: там кэшируются
+    // логины, потому что они нужны на каждое сообщение, а картинка — одна на человека
+    // и берётся из своего хранилища.
+    private var avatars: [String: UIImage] = [:]
 
     var title: String { chat.title }
     var isGroup: Bool { chat.isGroup }
@@ -85,13 +91,45 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
             self?.observeConversation()
             self?.observeMessages()
         }
+
+        loadAvatars()
+    }
+
+    //MARK: Версии аватаров читаются разом по составу, а картинки — по одной. Всё это
+    // один раз при открытии чата и ещё раз, когда в группу кого-то добавили: аватар,
+    // сменённый собеседником посреди разговора, догонит при следующем открытии.
+    // Слушатель на чужие профили ради кружка в углу баббла того не стоит.
+    private func loadAvatars() {
+        AvatarStore.shared.versions(for: chat.members) { [weak self] versions in
+            versions.forEach { uid, version in
+                AvatarStore.shared.load(uid: uid, version: version) { [weak self] image in
+                    guard let self, let image else { return }
+
+                    self.avatars[uid] = image
+                    self.view?.reloadAvatars()
+                }
+            }
+        }
+    }
+
+    func avatar(for uid: String) -> UIImage? {
+        avatars[uid]
     }
 
     private func observeConversation() {
         messangerManager.observeConversation(chat: chat) { [weak self] chat in
             guard let self else { return }
 
+            //MARK: Состав изменился — значит появился кто-то, чьего аватара мы ещё не
+            // видели. Удалённый останется в словаре, но его сообщения из переписки
+            // никуда не делись, и подписывать их безликим кружком незачем.
+            let joined = Set(chat.members).subtracting(self.chat.members)
+
             self.chat = chat
+
+            if !joined.isEmpty {
+                self.loadAvatars()
+            }
 
             //MARK: Имена берутся из состава, поэтому подписи под сообщениями надо
             // пересобрать: иначе добавленный участник остался бы безымянным до

@@ -10,6 +10,7 @@ import UIKit
 
 protocol ProfileViewProtocol: AnyObject {
     func reloadTable()
+    func reloadAvatar()
 }
 
 class ProfileView: UIViewController, ProfileViewProtocol {
@@ -78,6 +79,15 @@ class ProfileView: UIViewController, ProfileViewProtocol {
 
         //MARK: Профиль мог прийти до загрузки экрана — показываем то, что уже есть.
         reloadTable()
+        reloadAvatar()
+    }
+
+    //MARK: Заглушка остаётся, пока аватара нет или он ещё едет. Своя картинка при этом
+    // почти всегда приходит из кэша мгновенно — её положили туда при сохранении.
+    func reloadAvatar() {
+        guard isViewLoaded else { return }
+
+        imageView.image = presenter.avatar ?? UIImage(named: "basicUserImage")
     }
     
     override func viewWillAppear(_ animated: Bool) {

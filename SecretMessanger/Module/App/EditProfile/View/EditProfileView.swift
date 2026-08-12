@@ -11,6 +11,7 @@ import UIKit
 
 protocol EditProfileViewProtocol: AnyObject {
     func fill(login: String, name: String, someInfo: String)
+    func fill(avatar: UIImage?)
     func saved()
     func showError(_ message: String)
 }
@@ -107,6 +108,13 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         nameField.text = name
         someInfoField.text = someInfo
     }
+
+    //MARK: `nil` — аватара нет, и на его месте общая заглушка. Отдельного «пустого»
+    // изображения для этого не заводим: тот же `basicUserImage` стоит во всех местах,
+    // где человек без фото.
+    func fill(avatar: UIImage?) {
+        imageView.image = avatar ?? UIImage(named: "basicUserImage")
+    }
     
     //MARK: Возвращаемся в профиль: он слушает свой документ и покажет новое сразу,
     // а оставлять человека на форме после успеха незачем.
@@ -198,20 +206,36 @@ extension EditProfileView: UIImagePickerControllerDelegate, UINavigationControll
         actionSheet.addAction(UIAlertAction(title: "Отмена",
                                             style: .cancel,
                                             handler: nil))
-        actionSheet.addAction(UIAlertAction(title: "Сделать фото",
-                                            style: .default,
-                                            handler: { [weak self] _ in
-            self?.presentCamera()
-        }))
+
+        //MARK: Камеры на симуляторе нет вовсе, и без этой проверки пункт открывал бы
+        // пустой чёрный экран без единой кнопки.
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            actionSheet.addAction(UIAlertAction(title: "Сделать фото",
+                                                style: .default,
+                                                handler: { [weak self] _ in
+                self?.presentCamera()
+            }))
+        }
+
         actionSheet.addAction(UIAlertAction(title: "Выбрать фото",
                                             style: .default,
                                             handler: { [weak self] _ in
             self?.presentPhotoPicker()
         }))
-        
+
+        //MARK: Убрать фото предлагаем только тому, у кого оно есть: пункт, который
+        // ничего не делает, — та же ложь, что кнопка без реакции.
+        if presenter.hasAvatar {
+            actionSheet.addAction(UIAlertAction(title: "Убрать фото",
+                                                style: .destructive,
+                                                handler: { [weak self] _ in
+                self?.presenter.removeAvatar()
+            }))
+        }
+
         present(actionSheet, animated: true)
     }
-    
+
     func presentCamera() {
         let vc = UIImagePickerController()
         vc.delegate = self
@@ -219,7 +243,7 @@ extension EditProfileView: UIImagePickerControllerDelegate, UINavigationControll
         vc.allowsEditing = true
         present(vc, animated: true)
     }
-    
+
     func presentPhotoPicker() {
         let vc = UIImagePickerController()
         vc.delegate = self
@@ -236,12 +260,19 @@ extension EditProfileView: UIImagePickerControllerDelegate, UINavigationControll
         picker.dismiss(animated: true, completion: nil)
     }
     
+    //MARK: Берём отредактированную картинку, а не оригинал: `allowsEditing` даёт
+    // системную рамку кадрирования, и человек уже выбрал ею, что попадёт в кружок.
+    // Оригинал на всякий случай запасным вариантом — редактор можно и пропустить.
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         picker.dismiss(animated: true, completion: nil)
-        
-        guard let selectedImage = info[UIImagePickerController.InfoKey.editedImage] as? UIImage else { return }
-        print(info)
-        
-        self.imageView.image = selectedImage
+
+        let picked = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
+
+        guard let picked else {
+            showError("Не удалось прочитать изображение")
+            return
+        }
+
+        presenter.changeAvatar(picked)
     }
 }

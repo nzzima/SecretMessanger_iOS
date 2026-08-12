@@ -90,7 +90,10 @@ extension MessageListView: UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: ConversationTableViewCell.reuseIdentifier, for: indexPath) as! ConversationTableViewCell
 
-        cell.configCell(presenter.conversations[indexPath.row])
+        let conversation = presenter.conversations[indexPath.row]
+        let version = conversation.companionId.map { presenter.avatarVersion(for: $0) } ?? 0
+
+        cell.configCell(conversation, avatarVersion: version)
 
         return cell
     }

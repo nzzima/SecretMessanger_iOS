@@ -128,9 +128,18 @@ class Builder {
     static func getEditProfileView() -> UIViewController {
         let view = EditProfileView()
         let presenter = EditProfileViewPresenter(view: view)
-        
+
         view.presenter = presenter
-        
+
+        return view
+    }
+
+    static func getKeyExportView() -> UIViewController {
+        let view = KeyExportView()
+        let presenter = KeyExportViewPresenter(view: view)
+
+        view.presenter = presenter
+
         return view
     }
     

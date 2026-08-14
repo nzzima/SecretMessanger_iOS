@@ -47,6 +47,16 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         return $0
     }(UIButton())
     
+    //MARK: Живёт рядом с «Выйти», а не в профиле: оба действия про аккаунт целиком, и
+    // оба человек ищет там, где меняет свои данные.
+    lazy var transferKey: UIButton = {
+        $0.setTitle("Перенести ключ на другое устройство", for: .normal)
+        $0.setTitleColor(.faceid, for: .normal)
+        $0.titleLabel?.font = .systemFont(ofSize: 15)
+        $0.addTarget(self, action: #selector(tappedTransferKey), for: .touchUpInside)
+        return $0
+    }(UIButton())
+
     lazy var exitAccount: UIButton = {
         $0.setTitle("Выйти", for: .normal)
         $0.setTitleColor(.red, for: .normal)
@@ -74,7 +84,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         navigationItem.title = "Редактирование"
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
-        view.addSubviews(imageView, editAvatar, loginField, loginLabel, nameField, nameLabel, someInfoField, someInfoLabel, exitAccount)
+        view.addSubviews(imageView, editAvatar, loginField, loginLabel, nameField, nameLabel, someInfoField, someInfoLabel, transferKey, exitAccount)
 
         self.hideKeyboardWhenTappedAround()
         setConstraints()
@@ -84,6 +94,10 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         presentPhotoActionSheet()
     }
     
+    @objc func tappedTransferKey() {
+        navigationController?.pushViewController(Builder.getKeyExportView(), animated: true)
+    }
+
     @objc func tappedExitAccount() {
         presentExitActionSheet()
     }
@@ -126,6 +140,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
         someInfoField.translatesAutoresizingMaskIntoConstraints = false
         someInfoLabel.translatesAutoresizingMaskIntoConstraints = false
         exitAccount.translatesAutoresizingMaskIntoConstraints = false
+        transferKey.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -167,6 +182,11 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
             someInfoField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             someInfoField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
             
+            transferKey.bottomAnchor.constraint(equalTo: exitAccount.topAnchor, constant: -16),
+            transferKey.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            transferKey.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            transferKey.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+
             exitAccount.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -30),
             exitAccount.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             exitAccount.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),

@@ -51,6 +51,15 @@ enum KeyStore {
         return created
     }
 
+    //MARK: Отдельно от `identityKey(for:)`, потому что тот заводит ключ, если его нет.
+    // Переносу это противопоказано: создать пустой ключ и торжественно выдать его за
+    // перенос — худшее, что можно сделать, человек увезёт на второй телефон не ту
+    // половину и потеряет переписку молча.
+    /// Отдаёт ключ, если он есть, и `nil`, если его нет. Ничего не создаёт.
+    static func existingKey(for uid: String) -> Curve25519.KeyAgreement.PrivateKey? {
+        load(uid: uid)
+    }
+
     private static func query(uid: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,

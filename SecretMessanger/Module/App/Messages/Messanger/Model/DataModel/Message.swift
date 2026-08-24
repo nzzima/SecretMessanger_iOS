@@ -15,6 +15,14 @@ struct Message: MessageType {
     var sentDate: Date
     var kind: MessageKind
 
+    //MARK: Исходный `Timestamp` из документа, а не только его `Date`. Метка прочтения
+    // обязана вернуться в базу **той же самой** величиной: `Timestamp` хранит
+    // наносекунды, `Date` — `Double`, и на масштабе 1.8 млрд секунд у него не остаётся
+    // разрядов под наносекунды. Обратный перевод `Timestamp(date:)` промахивался вниз на
+    // доли микросекунды, и «дочитал ровно до этого сообщения» превращалось в «не дочитал»
+    // — галочка не синела, а разницу в логе не разглядеть: секунды совпадают.
+    let timestamp: Timestamp
+
     //MARK: То, что лежит в документе как есть. Расшифровывает презентер — он один
     // знает диалог, а с ним и ключ; модель к Keychain не ходит.
     var body: String
@@ -43,7 +51,8 @@ struct Message: MessageType {
     init(messageId: String, data: [String: Any]) {
         self.messageId = messageId
         self.sender = Sender(senderId: data["senderId"] as? String ?? "", displayName: "")
-        self.sentDate = (data["date"] as? Timestamp)?.dateValue() ?? Date()
+        self.timestamp = data["date"] as? Timestamp ?? Timestamp(date: Date())
+        self.sentDate = self.timestamp.dateValue()
 
         //MARK: Флаг `enc` разделяет переписку до шифрования и после. Сообщения без
         // него читаются как раньше — сносить историю ради перехода не пришлось.

@@ -161,6 +161,21 @@ service cloud.firestore {
                && request.resource.data.get('keyVersion', 0) == resource.data.get('keyVersion', 0);
       }
 
+      // Метки прочтения. Карта `readUpTo` — единственное в шапке, что пишет о себе
+      // каждый участник, поэтому ограничение здесь именное: изменить разрешено ровно
+      // свой ключ. Без этой проверки участник проставил бы прочтение за другого — две
+      // галочки у собеседника, который сообщения не открывал, и это не косметика:
+      // человек ждал бы ответа, считая, что его прочли.
+      //
+      // `affectedKeys()` пустой, когда карту не трогали вовсе, а пустое множество
+      // `hasOnly` пропускает — обычная отправка сообщения через это условие проходит.
+      function receiptsOnlyMine() {
+        return request.resource.data.get('readUpTo', {})
+                 .diff(resource.data.get('readUpTo', {}))
+                 .affectedKeys()
+                 .hasOnly([request.auth.uid]);
+      }
+
       // Выход по своей воле — единственный случай, когда участник пишет состав, из
       // которого себя вычёркивает. Поэтому условие отдельное: `joiningAsMember()`
       // требует остаться в диалоге, и под общую ветку это не подводится.
@@ -173,7 +188,8 @@ service cloud.firestore {
                && request.auth.uid != resource.data.get('owner', '')
                && request.resource.data.users == resource.data.users.removeAll([request.auth.uid])
                && ownerUnchanged()
-               && keysUnchanged();
+               && keysUnchanged()
+               && receiptsOnlyMine();
       }
 
       // Читаем по массиву `users`: запрос экрана «Чаты»
@@ -191,6 +207,7 @@ service cloud.firestore {
       allow update: if (isMember()
                        && joiningAsMember()
                        && ownerUnchanged()
+                       && receiptsOnlyMine()
                        && (membersUnchanged() || isOwner())
                        && (keysUnchanged() || isOwner()))
                     || leaving();

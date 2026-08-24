@@ -132,6 +132,20 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         settingMessanger()
     }
 
+    //MARK: Отметка прочтения привязана к появлению и уходу экрана, а не к открытию чата:
+    // под ним может лежать «Участники», и всё это время переписку не видно.
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+
+        presenter.screenBecameVisible()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        presenter.screenWentAway()
+    }
+
     @objc private func showMembers() {
         let members = Builder.getChatMembersView(chat: presenter.chat)
         navigationController?.pushViewController(members, animated: true)
@@ -490,11 +504,32 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
         .white
     }
 
+    //MARK: Галочки приписываются к времени, а не занимают свою строку: под баблом уже
+    // отведено место, и вторая метка встаёт в него без единой правки в вёрстке.
+    //
+    // Одна галочка — «ушло в базу», две — «прочитано». Разделять «доставлено» и
+    // «отправлено» тут нечем и незачем: записалось в Firestore — значит доставлено всем,
+    // кто откроет чат.
     func messageBottomLabelAttributedText(for message: any MessageType, at indexPath: IndexPath) -> NSAttributedString? {
-        NSAttributedString(string: message.sentDate.formatted(date: .omitted, time: .shortened), attributes: [
+        let time = NSMutableAttributedString(
+            string: message.sentDate.formatted(date: .omitted, time: .shortened),
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 10),
+                .foregroundColor: UIColor.gray
+            ])
+
+        //MARK: Только на своих. Чужому сообщению «прочитано» ничего не сообщает — я его
+        // и так вижу, — а место под баблом занимает.
+        guard isFromSelf(message), let own = message as? Message else { return time }
+
+        let read = presenter.isRead(own)
+
+        time.append(NSAttributedString(string: read ? " ✓✓" : " ✓", attributes: [
             .font: UIFont.systemFont(ofSize: 10),
-            .foregroundColor: UIColor.gray
-        ])
+            .foregroundColor: read ? UIColor.systemBlue : UIColor.gray
+        ]))
+
+        return time
     }
 
     //MARK: Ячейки переиспользуются, поэтому играющую надо узнавать по сообщению, а не

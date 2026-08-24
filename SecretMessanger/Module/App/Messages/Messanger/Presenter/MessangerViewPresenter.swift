@@ -41,6 +41,15 @@ protocol MessangerViewPresenterProtocol: AnyObject {
     func loadPhoto(messageId: String, completion: @escaping (UIImage?) -> Void)
     func shareLocation()
     func avatar(for uid: String) -> UIImage?
+
+    /// Прочитали ли **все** остальные это наше сообщение. Для чужих — всегда `false`:
+    /// галочки ставятся только на своих.
+    func isRead(_ message: Message) -> Bool
+
+    /// Экран показался или ушёл. Метка прочтения ставится только пока переписку
+    /// действительно видно.
+    func screenBecameVisible()
+    func screenWentAway()
 }
 
 class MessangerViewPresenter: MessangerViewPresenterProtocol {
@@ -65,6 +74,23 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
     private var isSharingLocation = false
     private var isAskingMicrophone = false
+
+    //MARK: Метка ставится, только пока переписку **видно на самом деле**, и условий здесь
+    // два, а не одно. Экран может быть открыт и при этом не виден: приложение свернули в
+    // карман или сверху лежит экран «Участники». В обоих случаях «прочитано» означало бы
+    // «чат был открыт», и человек, которому показали две галочки, ждал бы ответа от того,
+    // кто ничего не видел.
+    private var isOnScreen = false
+    private var isForeground = true
+
+    private var isVisible: Bool { isOnScreen && isForeground }
+
+    private var lifecycleObservers: [NSObjectProtocol] = []
+
+    //MARK: Докуда мы уже отметились. Без этого каждый снапшот шапки — а она меняется на
+    // любую отправку и на любую чужую метку — заказывал бы новую запись, и две
+    // переписывающиеся стороны гоняли бы метки по кругу до бесконечности.
+    private var markedUpTo: Date?
 
     //MARK: Аватары участников. В шапке диалога их нет и не будет: там кэшируются
     // логины, потому что они нужны на каждое сообщение, а картинка — одна на человека
@@ -102,6 +128,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     deinit {
         messangerManager.stopObserving()
         presence?.stop()
+        lifecycleObservers.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
     private func start() {
@@ -118,6 +145,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
         loadAvatars()
         observePresence()
+        observeLifecycle()
     }
 
     //MARK: Слушатель на один документ, а не на коллекцию: в чате нас интересует ровно
@@ -167,6 +195,55 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         avatars[uid]
     }
 
+    func isRead(_ message: Message) -> Bool {
+        guard message.sender.senderId == chat.selfId else { return false }
+
+        return chat.isRead(message.sentDate, author: chat.selfId)
+    }
+
+    func screenBecameVisible() {
+        isOnScreen = true
+        markReadIfNeeded()
+    }
+
+    func screenWentAway() {
+        isOnScreen = false
+    }
+
+    //MARK: Уход в фон экран не замечает — `viewWillDisappear` на это не срабатывает, —
+    // поэтому слушаем приложение напрямую. Без этого чат, свёрнутый в карман вместе с
+    // телефоном, продолжал бы отмечать входящие прочитанными.
+    private func observeLifecycle() {
+        let center = NotificationCenter.default
+
+        lifecycleObservers = [
+            center.addObserver(forName: UIApplication.didEnterBackgroundNotification,
+                               object: nil, queue: .main) { [weak self] _ in
+                self?.isForeground = false
+            },
+            center.addObserver(forName: UIApplication.willEnterForegroundNotification,
+                               object: nil, queue: .main) { [weak self] _ in
+                self?.isForeground = true
+                self?.markReadIfNeeded()
+            }
+        ]
+    }
+
+    //MARK: Отмечаемся по дате последнего сообщения, а не по «сейчас»: читающий возвращает
+    // ту же дату, что стоит в документе, и обе стороны сравнивают числа с одних часов.
+    private func markReadIfNeeded() {
+        guard isVisible, let last = incoming.last else { return }
+
+        //MARK: Своё же сообщение метить незачем — оно и так наше, а лишняя запись
+        // разбудила бы слушателя шапки у собеседника без всякой пользы.
+        guard last.sender.senderId != chat.selfId else { return }
+
+        guard markedUpTo == nil || last.sentDate > markedUpTo! else { return }
+
+        markedUpTo = last.sentDate
+        messangerManager.markRead(chat: chat, upTo: last.timestamp)
+    }
+
     private func observeConversation() {
         messangerManager.observeConversation(chat: chat) { [weak self] chat in
             guard let self else { return }
@@ -200,6 +277,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
             self.incoming = messages
             self.rebuildMessages()
+            self.markReadIfNeeded()
 
             DispatchQueue.main.async {
                 self.view?.reloadCollection()

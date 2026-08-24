@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FirebaseFirestore
 
 //MARK: Всё, что нужно, чтобы открыть переписку — с любым числом участников.
 // Ни названия, ни признака группы в базе нет: и то и другое выводится из состава,
@@ -34,6 +35,13 @@ struct Chat {
     // пусто — открытые ключи живут в `users`, а не в шапке диалога.
     let knownPublicKeys: [String: String]
 
+    //MARK: Докуда каждый дочитал. Метка живёт в шапке, а не в самом сообщении, и это не
+    // вкусовщина: на `messages/{id}` стоит `allow update: if false` — сообщение
+    // неизменяемо после отправки, и правило это хорошее. Карта в шапке обходится одной
+    // записью вместо записи на каждое прочитанное сообщение и заодно сразу показывает,
+    // кто в группе докуда добрался.
+    let readUpTo: [String: Date]
+
     var isEncrypted: Bool {
         !convoKeys.isEmpty
     }
@@ -61,6 +69,28 @@ struct Chat {
     /// Имя участника из кэша в шапке; пустая строка, если мы его ещё не знаем.
     func login(for userId: String) -> String {
         logins[userId] ?? ""
+    }
+
+    //MARK: «Прочитано» — значит прочитано **всеми** остальными. В группе на пятерых
+    // «прочитали двое» пришлось бы куда-то поместить и как-то читать, а действий из этой
+    // цифры не следует никаких: дописывать некому, ждать нечего. Две галочки, когда
+    // дошло до последнего, — единственная форма, у которой есть смысл.
+    //
+    // Сравнение идёт по дате **сообщения**, а не по времени, когда его прочли. Читающий
+    // возвращает ту же дату, что стоит в документе, поэтому обе стороны сравнивают числа
+    // с одних часов — отправительских. Со временем чтения разошедшиеся часы двух
+    // телефонов давали бы то галочки на непрочитанном, то их отсутствие на прочитанном.
+    /// Прочитали ли это сообщение все, кроме автора.
+    func isRead(_ date: Date, author: String) -> Bool {
+        let others = members.filter { $0 != author }
+
+        guard !others.isEmpty else { return false }
+
+        return others.allSatisfy { member in
+            guard let seen = readUpTo[member] else { return false }
+
+            return seen >= date
+        }
     }
 }
 
@@ -98,6 +128,7 @@ extension Chat {
         self.convoKeys = [:]
         self.keyVersion = 0
         self.knownPublicKeys = publicKeys
+        self.readUpTo = [:]
     }
 
     //MARK: Существующий чат из документа Firestore.
@@ -112,5 +143,9 @@ extension Chat {
         self.convoKeys = data["convoKeys"] as? [String: String] ?? [:]
         self.keyVersion = data["keyVersion"] as? Int ?? 0
         self.knownPublicKeys = [:]
+
+        //MARK: Диалоги, заведённые до появления меток, карты не имеют вовсе — пустая
+        // означает «никто ничего не читал», и галочек там просто не будет.
+        self.readUpTo = (data["readUpTo"] as? [String: Timestamp] ?? [:]).mapValues { $0.dateValue() }
     }
 }

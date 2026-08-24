@@ -90,9 +90,16 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
             context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Подтвердите, что это вы") { success, error in
                 DispatchQueue.main.async {
                     guard success, error == nil else {
-                        self.showAlert(title: "Ошибка", message: "Попробуйте снова")
-                        print("Biometric authentication failed")
-                        print(error!.localizedDescription)
+                        //MARK: `error!` здесь был force unwrap в ветке отказа — падение
+                        // ровно там, где что-то уже пошло не так. Причина теперь
+                        // разбирается, а не печатается в консоль поверх бессодержательного
+                        // «Попробуйте снова».
+                        if let failure = BiometricFailure.describing(error) {
+                            self.showAlert(title: failure.title, message: failure.message)
+                        }
+
+                        print("Вход по биометрии не прошёл: \(error?.localizedDescription ?? "причина неизвестна")")
+
                         return
                     }
                     
@@ -104,8 +111,11 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
                 }
             }
         } else {
-            if let error {
-                showAlert(title: "Нет доступа", message:  "\(error.localizedDescription)")
+            //MARK: Сюда попадаем, когда войти нечем вовсе — на телефоне нет ни биометрии,
+            // ни код-пароля. Причина по природе та же, поэтому и разбирается тем же
+            // способом, а не отдельной веткой с чужим текстом.
+            if let failure = BiometricFailure.describing(error) {
+                showAlert(title: failure.title, message: failure.message)
             }
         }
     }

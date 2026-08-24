@@ -7,7 +7,7 @@
 
 import UIKit
 
-/// Строка списка «Контакты»: аватар и логин.
+/// Строка списка «Контакты»: аватар, логин и точка присутствия.
 class UserCellTableViewCell: UITableViewCell {
 
     @IBOutlet weak var parentView: UIView!
@@ -17,6 +17,21 @@ class UserCellTableViewCell: UITableViewCell {
     // подстановку аватара ячейка не пишет вовсе — этим занимается `AvatarImageView`.
     @IBOutlet weak var userImage: AvatarImageView!
 
+    //MARK: Точка живёт на `parentView`, а не внутри кружка: у `AvatarImageView`
+    // включён `clipsToBounds`, и на самом аватаре её срезало бы ровно по краю круга —
+    // то есть наполовину, потому что сидит она как раз на границе.
+    private lazy var onlineDot: UIView = {
+        $0.backgroundColor = .systemGreen
+        $0.layer.cornerRadius = UserCellTableViewCell.dotDiameter / 2
+        $0.layer.borderWidth = 2
+        $0.layer.borderColor = UIColor.bgMain.cgColor
+        $0.isHidden = true
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        return $0
+    }(UIView())
+
+    private static let dotDiameter: CGFloat = 14
+
     static let reuseIdentifier = "UserCellTableViewCell"
 
     override func awakeFromNib() {
@@ -24,14 +39,28 @@ class UserCellTableViewCell: UITableViewCell {
         settingCell()
     }
 
+    //MARK: Присутствие приходит отдельным параметром, а не полем `ChatUser`: контакт
+    // читается из профиля, а присутствие — из своей коллекции, и живут они с разной
+    // скоростью. Сложи их в один тип — и каждый удар чужого пульса выглядел бы как
+    // изменение контакта.
     /// Заполняет строку контакта.
-    func configCell(_ user: ChatUser) {
+    func configCell(_ user: ChatUser, isOnline: Bool) {
         userLogin.text = user.login
+        onlineDot.isHidden = !isOnline
 
         userImage.load(uid: user.id, version: user.avatarVersion)
     }
 
     func settingCell() {
+        parentView.addSubview(onlineDot)
+
+        NSLayoutConstraint.activate([
+            onlineDot.widthAnchor.constraint(equalToConstant: UserCellTableViewCell.dotDiameter),
+            onlineDot.heightAnchor.constraint(equalToConstant: UserCellTableViewCell.dotDiameter),
+            onlineDot.trailingAnchor.constraint(equalTo: userImage.trailingAnchor, constant: 2),
+            onlineDot.bottomAnchor.constraint(equalTo: userImage.bottomAnchor, constant: 2)
+        ])
+
         parentView.layer.cornerRadius = 10
         parentView.layer.borderColor = UIColor.lightGray.cgColor
         parentView.layer.borderWidth = 0.5

@@ -23,11 +23,19 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
     private var rows: [(title: String, value: String)] {
         guard let profile = presenter.profile else { return [] }
 
-        return [
+        var rows: [(title: String, value: String)] = [
             ("Логин", profile.login),
             ("Имя", profile.name),
             ("Заметка", profile.someInfo)
         ]
+
+        //MARK: Строка появляется, только если присутствие известно. Пустое «Статус: —»
+        // у человека, не заходившего после появления функции, выглядело бы поломкой.
+        if !presenter.status.isEmpty {
+            rows.append(("Статус", presenter.status))
+        }
+
+        return rows
     }
 
     lazy var imageView = AvatarImageView.profile()

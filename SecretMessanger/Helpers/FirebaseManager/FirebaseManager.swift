@@ -30,6 +30,11 @@ class FirebaseManager {
     /// Выходит из аккаунта и просит окно смениться на экран входа.
     func signOut() {
         do {
+            //MARK: Пульс останавливается до выхода, а не после: правило разрешает писать
+            // присутствие только себе, и удар, догнавший уже разлогиненное приложение,
+            // просто отвалился бы с ошибкой в консоль.
+            PresenceStore.shared.deactivate()
+
             try auth.signOut()
             NotificationCenter.default.post(name: .windowManager, object: nil, userInfo: [String.state: WindowManager.authorizationWindow])
         } catch {

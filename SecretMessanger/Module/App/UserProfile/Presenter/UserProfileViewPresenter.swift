@@ -15,6 +15,9 @@ protocol UserProfileViewPresenterProtocol: AnyObject {
     var profile: ProfileInfo? { get }
     var avatar: UIImage? { get }
 
+    /// «в сети», «в сети вчера в 21:14». Пустая, пока присутствие неизвестно.
+    var status: String { get }
+
     /// Диалог с этим человеком. Id соберётся из пары uid, поэтому кнопка открывает
     /// существующую переписку, а не заводит вторую.
     var chat: Chat? { get }
@@ -30,6 +33,9 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
 
     private(set) var profile: ProfileInfo?
     private(set) var avatar: UIImage?
+    private(set) var status = ""
+
+    private lazy var presence = PresenceObserver(scope: .one(userId))
 
     //MARK: Пока профиль не подгрузился, заголовок берём из списка контактов —
     // экран не должен открываться безымянным.
@@ -56,10 +62,28 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
         self.fallbackLogin = chatUser.login
 
         observeProfile()
+        observePresence()
     }
 
     deinit {
         userProfileManager.stopObserving()
+        presence.stop()
+    }
+
+    private func observePresence() {
+        presence.start { [weak self] _ in
+            guard let self else { return }
+
+            //MARK: Пустая строка — «не знаем»: у человека, не заходившего после
+            // появления присутствия, документа нет вовсе, и строка в профиле просто
+            // не показывается.
+            let updated = self.presence.status(of: self.userId)?.text() ?? ""
+
+            guard updated != self.status else { return }
+
+            self.status = updated
+            self.view?.reloadProfile()
+        }
     }
 
     private func observeProfile() {

@@ -80,11 +80,43 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         return $0
     }(UILabel())
 
+    //MARK: Шапка на две строки — имя и присутствие. Обычного `title` для этого мало:
+    // он одна строка и красится общим оформлением панели. Само `title` при этом
+    // остаётся выставленным — из него iOS берёт подпись кнопки «назад» на предыдущем
+    // экране, а её `titleView` не заменяет.
+    private lazy var headerTitle: UILabel = {
+        $0.font = .systemFont(ofSize: 17, weight: .semibold)
+        $0.textColor = .white
+        $0.textAlignment = .center
+        return $0
+    }(UILabel())
+
+    private lazy var headerStatus: UILabel = {
+        $0.font = .systemFont(ofSize: 12)
+        $0.textColor = .lightGray
+        $0.textAlignment = .center
+        return $0
+    }(UILabel())
+
+    private lazy var headerView: UIStackView = {
+        $0.axis = .vertical
+        $0.alignment = .center
+        return $0
+    }(UIStackView(arrangedSubviews: [headerTitle, headerStatus]))
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         title = presenter.title
         showMessageTimestampOnSwipeLeft = true
+
+        //MARK: Только у диалога на двоих: присутствие группы — это присутствие
+        // нескольких человек, и одной строкой оно не выражается.
+        if !presenter.isGroup {
+            navigationItem.titleView = headerView
+        }
+
+        reloadTitle()
 
         //MARK: Кнопка только в группе. Диалог на двоих третьим не дополняется: его
         // id — пара uid по алфавиту, и чат из «Контактов» всегда попадает именно в
@@ -305,9 +337,13 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         messagesCollectionView.reloadData()
     }
 
-    //MARK: Название группы — это её состав, поэтому оно меняется вместе с ним.
+    //MARK: Название группы — это её состав, поэтому оно меняется вместе с ним. Этим же
+    // методом обновляется присутствие собеседника: обе строки шапки живут вместе.
     func reloadTitle() {
         title = presenter.title
+        headerTitle.text = presenter.title
+        headerStatus.text = presenter.status
+        headerStatus.isHidden = presenter.status.isEmpty
     }
 
     func showError(_ message: String) {

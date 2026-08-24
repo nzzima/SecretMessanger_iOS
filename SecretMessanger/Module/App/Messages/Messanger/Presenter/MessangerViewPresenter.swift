@@ -13,6 +13,10 @@ protocol MessangerViewPresenterProtocol: AnyObject {
 
     /// Заголовок: имена всех, кроме себя. У группы меняется вместе с составом.
     var title: String { get }
+
+    /// Вторая строка шапки: «в сети», «в сети 20 минут назад». Пустая у группы и пока
+    /// присутствие собеседника неизвестно.
+    var status: String { get }
     var isGroup: Bool { get }
     var selfSender: Sender { get }
     var messages: [Message] { get }
@@ -47,6 +51,11 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     private let recorder = VoiceRecorder()
     private let locations = LocationProvider()
 
+    //MARK: Только у диалога на двоих. В группе присутствие пришлось бы сводить по всем
+    // сразу, и во второй строке шапки оказалось бы «в сети 2 из 5» — цифра, которую
+    // некуда приткнуть и незачем читать.
+    private var presence: PresenceObserver?
+
     //MARK: Состав чата больше не константа: создатель может добавить или убрать
     // участника, пока экран открыт. Отсюда `var` и слушатель на шапку.
     private(set) var chat: Chat
@@ -63,6 +72,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
     private var avatars: [String: UIImage] = [:]
 
     var title: String { chat.title }
+    private(set) var status = ""
     var isGroup: Bool { chat.isGroup }
 
     var selfSender: Sender {
@@ -91,6 +101,7 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
 
     deinit {
         messangerManager.stopObserving()
+        presence?.stop()
     }
 
     private func start() {
@@ -106,6 +117,33 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
         }
 
         loadAvatars()
+        observePresence()
+    }
+
+    //MARK: Слушатель на один документ, а не на коллекцию: в чате нас интересует ровно
+    // один человек, и коллекция присутствия приносила бы сюда удары пульса всех
+    // остальных — с чтением за каждый.
+    private func observePresence() {
+        guard !chat.isGroup,
+              let companion = chat.members.first(where: { $0 != chat.selfId }) else { return }
+
+        let observer = PresenceObserver(scope: .one(companion))
+
+        observer.start { [weak self] _ in
+            guard let self else { return }
+
+            //MARK: Пустая строка — это «не знаем», а не «офлайн». Человек, ни разу не
+            // заходивший после появления присутствия, документа не имеет вовсе, и
+            // подписывать его «в сети никогда» было бы неправдой.
+            let updated = observer.status(of: companion)?.text() ?? ""
+
+            guard updated != self.status else { return }
+
+            self.status = updated
+            self.view?.reloadTitle()
+        }
+
+        presence = observer
     }
 
     //MARK: Версии аватаров читаются разом по составу, а картинки — по одной. Всё это

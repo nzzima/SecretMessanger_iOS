@@ -84,7 +84,7 @@ extension UserListView: UITableViewDataSource {
         cell.selectionStyle = .none
         
         let cellItem = presenter.users[indexPath.row]
-        cell.configCell(cellItem)
+        cell.configCell(cellItem, isOnline: presenter.isOnline(cellItem.id))
         
         return cell
     }

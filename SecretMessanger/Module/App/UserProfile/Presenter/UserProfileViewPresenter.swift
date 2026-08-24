@@ -28,8 +28,18 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
     weak var view: UserProfileViewProtocol?
 
     private let userProfileManager = UserProfileManager()
-    private let userId: String
-    private let fallbackLogin: String
+
+    //MARK: Контакт хранится целиком, а не разобранным на id и логин. Раньше от него
+    // оставляли эти два поля, а `chat` собирал собеседника заново — `ChatUser(id:login:)`,
+    // у которого `publicKey` пустой по умолчанию. Диалог из-за этого заводился с ключом,
+    // запечатанным только для себя, и собеседник видел «🔒 Сообщение не расшифровано» до
+    // тех пор, пока создатель не откроет чат второй раз и не сработает дозапечатывание.
+    // Открытый ключ всё это время лежал в переданном `ChatUser` — его выбрасывали на
+    // ровном месте.
+    private let contact: ChatUser
+
+    private var userId: String { contact.id }
+    private var fallbackLogin: String { contact.login }
 
     private(set) var profile: ProfileInfo?
     private(set) var avatar: UIImage?
@@ -49,17 +59,20 @@ class UserProfileViewPresenter: UserProfileViewPresenterProtocol {
     var chat: Chat? {
         guard let selfId = FirebaseManager.shared.getUser()?.uid else { return nil }
 
-        let selfLogin = SelfName.current
+        //MARK: Логин подставляем свежий — профиль подгружается после списка контактов и
+        // мог принести переименование. Всё остальное, и прежде всего `publicKey`, едет
+        // как пришло: именно он решает, сможет ли собеседник прочитать первое сообщение.
+        var companion = contact
+        companion.login = title
 
         return Chat(selfId: selfId,
-                    selfLogin: selfLogin,
-                    contacts: [ChatUser(id: userId, login: title)])
+                    selfLogin: SelfName.current,
+                    contacts: [companion])
     }
 
     required init(view: any UserProfileViewProtocol, chatUser: ChatUser) {
         self.view = view
-        self.userId = chatUser.id
-        self.fallbackLogin = chatUser.login
+        self.contact = chatUser
 
         observeProfile()
         observePresence()

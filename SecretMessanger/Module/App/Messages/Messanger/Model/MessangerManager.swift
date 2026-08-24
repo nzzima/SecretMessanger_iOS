@@ -57,14 +57,16 @@ class MessangerManager {
             } else {
                 //MARK: Ошибка чтения сюда же: офлайн `getDocument` отдаёт кэш, так
                 // что «не прочиталось» на практике означает «документа нет».
-                var payload: [String: Any] = [
-                    "users": chat.members,
-                    "logins": self.logins(of: chat),
-                    "owner": chat.owner
-                ]
-                payload.merge(self.firstKey(for: chat)) { _, new in new }
+                self.firstKey(for: chat) { extra in
+                    var payload: [String: Any] = [
+                        "users": chat.members,
+                        "logins": self.logins(of: chat),
+                        "owner": chat.owner
+                    ]
+                    payload.merge(extra) { _, new in new }
 
-                self.write(payload, to: document, completion: completion)
+                    self.write(payload, to: document, completion: completion)
+                }
             }
         }
     }
@@ -94,22 +96,51 @@ class MessangerManager {
         }
     }
 
-    //MARK: Первый ключ диалога, запечатанный для тех, чьи открытые ключи пришли
-    // вместе с выбранными контактами, и для себя.
-    private func firstKey(for chat: Chat) -> [String: Any] {
-        var publicKeys = chat.knownPublicKeys
+    //MARK: Ключи читаются из `users`, а не берутся на веру от вызывающего. До
+    // 24.08.2026 брался только принесённый кэш — и путь «Контакты → профиль → написать»
+    // приносил пустоту, потому что собеседник там собирался заново, без открытого ключа.
+    // Диалог заводился запечатанным для себя одного, и читать его собеседник не мог.
+    // Дверей в чат две, и достаточно было одной забывчивой, чтобы переписка молча не
+    // открылась.
+    //
+    // `users` вдобавок свежее любого кэша: человек мог переустановить приложение и
+    // опубликовать новый ключ. Запечатать под устаревший — хуже, чем не запечатать вовсе:
+    // запись в `convoKeys` появится, дозапечатывание её не тронет (оно ищет отсутствующие,
+    // а не негодные), и переписка останется нечитаемой навсегда.
+    //
+    // Отсюда же следует, почему у ``Chat`` больше нет поля с чужими ключами: вторая копия
+    // рядом с источником — это вторая копия, которая отстанет.
+    /// Первый ключ диалога, запечатанный для всех участников и для себя.
+    private func firstKey(for chat: Chat, completion: @escaping ([String: Any]) -> Void) {
+        let others = chat.members.filter { $0 != chat.selfId }
 
-        if let mine = PublicKeyDirectory.own(uid: chat.selfId) {
-            publicKeys[chat.selfId] = mine
+        PublicKeyDirectory.keys(for: others) { [weak self] fetched in
+            guard let self else {
+                completion([:])
+                return
+            }
+
+            var publicKeys = fetched
+
+            //MARK: Свой ключ — из Keychain, а не из профиля: там он и рождается, а в
+            // профиле лишь опубликован. Читать его из `users` значило бы зависеть от
+            // того, что публикация уже прошла.
+            if let mine = PublicKeyDirectory.own(uid: chat.selfId) {
+                publicKeys[chat.selfId] = mine
+            }
+
+            guard !publicKeys.isEmpty else {
+                completion([:])
+                return
+            }
+
+            let entries = self.crypto.sealed(key: self.crypto.newKey(),
+                                             version: 1,
+                                             convoId: chat.id,
+                                             for: publicKeys)
+
+            completion(entries.isEmpty ? [:] : ["convoKeys": entries, "keyVersion": 1])
         }
-
-        guard !publicKeys.isEmpty else { return [:] }
-
-        let entries = crypto.sealed(key: crypto.newKey(), version: 1, convoId: chat.id, for: publicKeys)
-
-        guard !entries.isEmpty else { return [:] }
-
-        return ["convoKeys": entries, "keyVersion": 1]
     }
 
     //MARK: Досыпает ключи тем участникам, у кого их нет: человек мог зарегистрироваться

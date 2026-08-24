@@ -29,12 +29,6 @@ struct Chat {
     let convoKeys: [String: String]
     let keyVersion: Int
 
-    //MARK: Открытые ключи участников. Заполнены только на пути «создаём новый чат»,
-    // где они пришли вместе с выбранными контактами: создателю нужно тут же
-    // запечатать для них ключ диалога. У чата, прочитанного из Firestore, здесь
-    // пусто — открытые ключи живут в `users`, а не в шапке диалога.
-    let knownPublicKeys: [String: String]
-
     //MARK: Докуда каждый дочитал. Метка живёт в шапке, а не в самом сообщении, и это не
     // вкусовщина: на `messages/{id}` стоит `allow update: if false` — сообщение
     // неизменяемо после отправки, и правило это хорошее. Карта в шапке обходится одной
@@ -106,17 +100,15 @@ extension Chat {
     }
 
     //MARK: Новый чат из выбранных контактов. Создатель — тот, кто выбирал.
+    //MARK: Открытые ключи участников сюда больше не едут, и это следствие бага от
+    // 24.08.2026. Кэш, принесённый вызывающим, был единственным источником при заведении
+    // диалога — а один из двух путей в чат приносил пустоту, и переписка оказывалась
+    // запечатана для себя одного. Теперь ключи читает `MessangerManager` прямо из
+    // `users`, там они и живут; хранить рядом вторую, отстающую копию незачем.
     init(selfId: String, selfLogin: String, contacts: [ChatUser]) {
         var logins = [selfId: selfLogin]
-        var publicKeys: [String: String] = [:]
 
-        contacts.forEach {
-            logins[$0.id] = $0.login
-
-            if !$0.publicKey.isEmpty {
-                publicKeys[$0.id] = $0.publicKey
-            }
-        }
+        contacts.forEach { logins[$0.id] = $0.login }
 
         let members = [selfId] + contacts.map { $0.id }
 
@@ -127,7 +119,6 @@ extension Chat {
         self.selfId = selfId
         self.convoKeys = [:]
         self.keyVersion = 0
-        self.knownPublicKeys = publicKeys
         self.readUpTo = [:]
     }
 
@@ -142,7 +133,6 @@ extension Chat {
         self.selfId = selfId
         self.convoKeys = data["convoKeys"] as? [String: String] ?? [:]
         self.keyVersion = data["keyVersion"] as? Int ?? 0
-        self.knownPublicKeys = [:]
 
         //MARK: Диалоги, заведённые до появления меток, карты не имеют вовсе — пустая
         // означает «никто ничего не читал», и галочек там просто не будет.

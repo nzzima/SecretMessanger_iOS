@@ -60,15 +60,24 @@ final class DocumentParsingTests: XCTestCase {
         XCTAssertTrue(group.isGroup)
     }
 
-    /// Открытые ключи живут в `users`, а не в шапке: у прочитанного из базы диалога их
-    /// нет и быть не должно.
-    func testChatFromDatabaseHasNoPublicKeys() throws {
+    /// Открытые ключи живут в `users`, а не в шапке, и ``Chat`` их не носит вовсе —
+    /// ни из базы, ни из выбранных контактов. Поле с ними убрано 24.08.2026: копия рядом
+    /// с источником однажды отстала и оставила диалог запечатанным для одного человека.
+    ///
+    /// Тест сторожит именно это: посторонние ключи в документе разбор игнорирует и в
+    /// шапке диалога их не появляется — брать их оттуда больше неоткуда.
+    func testChatFromDatabaseCarriesNoPublicKeys() throws {
         let chat = try XCTUnwrap(Chat(id: "c", selfId: "red", data: [
             "users": ["red", "green"],
-            "publicKeys": ["green": "чужой-ключ"]
+            "publicKeys": ["green": "чужой-ключ"],
+            "convoKeys": ["red_1": "запечатанный"],
+            "keyVersion": 1
         ]))
 
-        XCTAssertTrue(chat.knownPublicKeys.isEmpty)
+        //MARK: Ключ диалога — тот, что запечатан лично для нас, — при этом на месте:
+        // без него переписка не открылась бы.
+        XCTAssertEqual(chat.convoKeys["red_1"], "запечатанный")
+        XCTAssertEqual(chat.keyVersion, 1)
     }
 
     // MARK: - Строка списка «Чаты»

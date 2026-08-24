@@ -67,13 +67,27 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
         ])
     }
     
+    //MARK: Проверяется и выполняется **одна и та же** политика. До 24.08.2026 они
+    // расходились: проверка шла по `.deviceOwnerAuthentication` («есть биометрия или
+    // код-пароль»), а выполнение — по `.deviceOwnerAuthenticationWithBiometrics` («только
+    // биометрия»). Расхождение запирало приложение наглухо. Достаточно было одного из
+    // трёх: Face ID не настроен на телефоне, разрешение приложению отклонили при
+    // единственном системном запросе, биометрия заблокирована после пяти промахов. Во всех
+    // трёх проверка проходила, вход падал, и человек получал «Попробуйте снова» столько
+    // раз, сколько готов был нажимать: другого пути внутрь на этом экране нет.
+    //
+    // `.deviceOwnerAuthentication` позволяет системе предложить код-пароль устройства,
+    // когда биометрия не вышла. Рубеж от этого не опускается: код-пароль знает владелец
+    // телефона, и за ним же лежит Keychain, где хранится ключ от всей переписки.
     private func authButtonPressed() {
         let context = LAContext()
         var error: NSError? = nil
         
         if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
         
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Please authenticate with Face ID") { success, error in
+            //MARK: Причина видна в системном диалоге, и про Face ID в ней говорить больше
+            // нельзя: тем же диалогом вводят код-пароль, когда биометрия не сработала.
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Подтвердите, что это вы") { success, error in
                 DispatchQueue.main.async {
                     guard success, error == nil else {
                         self.showAlert(title: "Ошибка", message: "Попробуйте снова")

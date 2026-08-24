@@ -18,6 +18,20 @@ enum UserInfoKeys: String {
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     var window: UIWindow?
+
+    //MARK: Что показано прямо сейчас. Нужно, чтобы не запирать уже запертое: вернувшись
+    // на экран блокировки или на форму входа, мы переходом туда же сбросили бы наполовину
+    // введённый пароль.
+    private var currentWindow: WindowManager = .biometricWindow
+
+    /// Когда ушли в фон. `nil` — не уходили.
+    private var leftAt: Date?
+
+    //MARK: Заслонка поверх окна. Снимок для переключателя задач система делает сама, и
+    // без заслонки в нём осталась бы открытая переписка — видная всякому, кто дважды
+    // нажмёт кнопку на разблокированном телефоне. Блокировка по возврату от этого не
+    // спасает: снимок сделан раньше, чем мы что-либо спросим.
+    private var shield: UIView?
     
     
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
@@ -30,6 +44,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = Builder.getBiometricAuthorizationView()
         //window?.rootViewController = Builder.getProfileView()
         window?.makeKeyAndVisible()
+
+        currentWindow = .biometricWindow
     }
     
     @objc
@@ -41,6 +57,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return
         }
         
+        currentWindow = state
+
         switch state {
         case .biometricWindow:
             //MARK: Экран блокировки — это ещё не «человек в сети»: сессия Firebase живёт
@@ -72,21 +90,73 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         PresenceStore.shared.resume()
+
+        hideShield()
     }
 
+    //MARK: Присутствие этот метод намеренно не трогает: он срабатывает на всякую мелочь —
+    // шторку уведомлений, панель управления, входящий звонок, — и гасить человека на них
+    // значило бы мигать серым по десять раз на дню. Уход из сети считается по фону.
+    //
+    // А заслонку ставить надо именно здесь: снимок для переключателя задач система делает
+    // **до** `didEnterBackground`, и поставленная там заслонка в него уже не попадёт.
+    // Мелькание при шторке уведомлений — плата за то, чтобы переписки в снимке не было
+    // никогда.
     func sceneWillResignActive(_ scene: UIScene) {
-        //MARK: Пусто намеренно. Этот метод срабатывает на всякую мелочь — шторку
-        // уведомлений, панель управления, входящий звонок, — и гасить человека на них
-        // значило бы мигать серым по десять раз на дню. Уход считается по фону.
+        showShield()
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
         PresenceStore.shared.resume()
+
+        //MARK: Порядок обязателен: сначала меняем окно, потом убираем заслонку — её снимет
+        // `sceneDidBecomeActive` следом. Наоборот переписка мелькнула бы на кадр перед
+        // экраном блокировки.
+        if ReturnLock.shouldLock(state: currentWindow, leftAt: leftAt) {
+            NotificationCenter.default.post(name: .windowManager,
+                                            object: nil,
+                                            userInfo: [String.state: WindowManager.biometricWindow])
+        }
+
+        leftAt = nil
     }
 
     //MARK: Финальный удар пульса пишется здесь, а не в `resignActive`: именно этот момент
-    // потом читается как «в сети 20 минут назад».
+    // потом читается как «в сети 20 минут назад». Здесь же засекается уход — по фону, а не
+    // по потере активности: свернули в карман, а не открыли шторку.
     func sceneDidEnterBackground(_ scene: UIScene) {
         PresenceStore.shared.pause()
+
+        leftAt = Date()
+    }
+
+    private func showShield() {
+        guard shield == nil, let window else { return }
+
+        let cover = UIView(frame: window.bounds)
+        cover.backgroundColor = .bgMain
+        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        let lock = UIImageView(image: UIImage(systemName: "lock.fill"))
+        lock.tintColor = .faceid
+        lock.contentMode = .scaleAspectFit
+        lock.translatesAutoresizingMaskIntoConstraints = false
+
+        cover.addSubview(lock)
+
+        NSLayoutConstraint.activate([
+            lock.centerXAnchor.constraint(equalTo: cover.centerXAnchor),
+            lock.centerYAnchor.constraint(equalTo: cover.centerYAnchor),
+            lock.widthAnchor.constraint(equalToConstant: 64),
+            lock.heightAnchor.constraint(equalToConstant: 64)
+        ])
+
+        window.addSubview(cover)
+        shield = cover
+    }
+
+    private func hideShield() {
+        shield?.removeFromSuperview()
+        shield = nil
     }
 }

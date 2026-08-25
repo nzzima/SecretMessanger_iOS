@@ -145,6 +145,51 @@ final class DocumentContractTests: XCTestCase {
         XCTAssertEqual(message["message"] as? String, "привет")
     }
 
+    // MARK: - Шапка нового диалога
+
+    /// Группа обязана попадать в список «Чаты» сразу. Без непустого `lastMessage`
+    /// ``Conversation`` отбрасывает диалог, а другого входа в группу нет — из
+    /// «Контактов» открывается только переписка на двоих. Созданная и не подписанная
+    /// группа оказывалась недостижимой навсегда; найдено живьём 25.08.2026.
+    func testNewGroupHeaderCarriesCreationMark() {
+        let header = manager.newHeader(chat: encryptedGroup(), keys: [:], date: date)
+
+        XCTAssertEqual(header["lastMessage"] as? String, MessangerManager.groupCreatedPreview)
+        XCTAssertEqual(header["date"] as? Date, date)
+    }
+
+    /// Отметка лежит открытым текстом, и это часть договора, а не недосмотр. Появись
+    /// у неё `lastEnc`, участник без записи ключа увидел бы «🔒 Сообщение не
+    /// расшифровано» — то есть ровно ту же сломанную группу, от которой отметка спасает.
+    func testCreationMarkIsNotEncrypted() {
+        let header = manager.newHeader(chat: encryptedGroup(), keys: [:], date: date)
+
+        XCTAssertNil(header["lastEnc"], "отметка обязана читаться и без ключа")
+        XCTAssertNil(header["lastV"])
+    }
+
+    /// Диалогу на двоих отметка не положена: его шапка заводится при каждом открытии
+    /// чата из «Контактов», и список «Чаты» превратился бы в историю просмотров.
+    func testNewPairHeaderStaysOutOfTheList() {
+        let header = manager.newHeader(chat: encryptedPair(), keys: [:], date: date)
+
+        XCTAssertNil(header["lastMessage"])
+        XCTAssertNil(header["date"])
+    }
+
+    /// Состав, создатель и ключи едут в шапку независимо от вида диалога — на них
+    /// держатся правила Firestore и всё шифрование переписки.
+    func testNewHeaderCarriesMembersOwnerAndKeys() {
+        let header = manager.newHeader(chat: encryptedGroup(),
+                                       keys: ["convoKeys": ["red-uid_1": "запечатанный"], "keyVersion": 1],
+                                       date: date)
+
+        XCTAssertEqual(header["users"] as? [String], ["red-uid", "green-uid", "blue-uid"])
+        XCTAssertEqual(header["owner"] as? String, "red-uid")
+        XCTAssertEqual((header["logins"] as? [String: String])?["red-uid"], "red")
+        XCTAssertEqual(header["keyVersion"] as? Int, 1)
+    }
+
     // MARK: - Заготовки
 
     private func encryptedPair() -> Chat {

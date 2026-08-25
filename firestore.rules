@@ -182,7 +182,11 @@ service cloud.firestore {
       //
       // Вычеркнуть разрешено ровно себя и никого больше — состав после записи обязан
       // совпасть со старым минус свой uid. Создателю выход закрыт: группа осталась бы
-      // без того, кто может править состав, а передачи прав пока нет.
+      // без того, кто может править состав.
+      //
+      // Слово «пока» из этого объяснения ушло 25.08.2026 вместе с обещанием передачи
+      // прав — её не будет. Создателю выход не нужен по другой причине: у него есть
+      // способ группу закончить, см. `erasable()` ниже.
       function leaving() {
         return isMember()
                && request.auth.uid != resource.data.get('owner', '')
@@ -190,6 +194,22 @@ service cloud.firestore {
                && ownerUnchanged()
                && keysUnchanged()
                && receiptsOnlyMine();
+      }
+
+      // Кто вправе стереть диалог целиком — вместе с сообщениями, звуком и снимками.
+      //
+      // Диалог на двоих стирает любой из двоих: хозяина у него нет, переписка общая, и
+      // уходит она у обоих сразу. Группу — только создатель, тот же единственный, кто
+      // правит её состав. Группа без создателя (заведена до появления поля) не
+      // стирается никем, ровно как и не меняет состав.
+      //
+      // Принимает данные шапки параметром, а не читает их сам: из подколлекций та же
+      // проверка нужна по документу, добытому через `get()`, — а `resource` там уже
+      // означает сообщение, а не диалог.
+      function erasable(convo) {
+        return signedIn()
+               && request.auth.uid in convo.users
+               && (convo.users.size() == 2 || convo.get('owner', '') == request.auth.uid);
       }
 
       // Читаем по массиву `users`: запрос экрана «Чаты»
@@ -211,7 +231,13 @@ service cloud.firestore {
                        && (membersUnchanged() || isOwner())
                        && (keysUnchanged() || isOwner()))
                     || leaving();
-      allow delete: if false;
+
+      // Шапка стирается последней — клиент сначала вычищает подколлекции. Порядок
+      // обязателен: правила ниже читают состав участников из шапки через `get()`, а
+      // `get()` по несуществующему документу роняет проверку целиком. Стёртая первой
+      // шапка оставила бы сообщения и вложения в базе навсегда — недоступными ни для
+      // чтения, ни для удаления никому.
+      allow delete: if erasable(resource.data);
 
       // Сообщения.
       //
@@ -223,15 +249,32 @@ service cloud.firestore {
       // клиент пишет её первой.
       match /messages/{messageId} {
 
+        function header() {
+          return get(/databases/$(database)/documents/conversation/$(convoId)).data;
+        }
+
         function members() {
-          return get(/databases/$(database)/documents/conversation/$(convoId)).data.users;
+          return header().users;
         }
 
         allow read: if signedIn() && request.auth.uid in members();
         allow create: if signedIn()
                       && request.auth.uid in members()
                       && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false;
+
+        // Изменить отправленное по-прежнему нельзя никому: на этом держится метка
+        // прочтения — она живёт в шапке именно потому, что сообщение неизменяемо.
+        allow update: if false;
+
+        // Удаление открыто ровно тем, кто вправе стереть диалог целиком: рекурсивного
+        // удаления у клиента Firestore нет, вычищать подколлекции приходится ему
+        // самому, а Cloud Functions требуют платного тарифа — того самого, из-за
+        // которого здесь нет и Cloud Storage.
+        //
+        // Плата за это честная, и её видно: тот же человек может стереть и одно
+        // сообщение, не трогая остальные. Кнопки для этого в приложении нет, но
+        // правило её разрешает, и притворяться, будто нет, не стоит.
+        allow delete: if erasable(header());
       }
 
       // Голосовые сообщения. Байты лежат отдельной подколлекцией, а не в самом
@@ -244,15 +287,32 @@ service cloud.firestore {
       // отдельного механизма голосовым не понадобилось.
       match /audio/{messageId} {
 
+        function header() {
+          return get(/databases/$(database)/documents/conversation/$(convoId)).data;
+        }
+
         function members() {
-          return get(/databases/$(database)/documents/conversation/$(convoId)).data.users;
+          return header().users;
         }
 
         allow read: if signedIn() && request.auth.uid in members();
         allow create: if signedIn()
                       && request.auth.uid in members()
                       && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false;
+
+        // Изменить отправленное по-прежнему нельзя никому: на этом держится метка
+        // прочтения — она живёт в шапке именно потому, что сообщение неизменяемо.
+        allow update: if false;
+
+        // Удаление открыто ровно тем, кто вправе стереть диалог целиком: рекурсивного
+        // удаления у клиента Firestore нет, вычищать подколлекции приходится ему
+        // самому, а Cloud Functions требуют платного тарифа — того самого, из-за
+        // которого здесь нет и Cloud Storage.
+        //
+        // Плата за это честная, и её видно: тот же человек может стереть и одно
+        // сообщение, не трогая остальные. Кнопки для этого в приложении нет, но
+        // правило её разрешает, и притворяться, будто нет, не стоит.
+        allow delete: if erasable(header());
       }
 
       // Фотографии. Устроены ровно как голосовые и по той же причине: снимок лежит
@@ -265,15 +325,32 @@ service cloud.firestore {
       // а здесь это та же проверка по шапке, что у сообщений и у звука.
       match /images/{messageId} {
 
+        function header() {
+          return get(/databases/$(database)/documents/conversation/$(convoId)).data;
+        }
+
         function members() {
-          return get(/databases/$(database)/documents/conversation/$(convoId)).data.users;
+          return header().users;
         }
 
         allow read: if signedIn() && request.auth.uid in members();
         allow create: if signedIn()
                       && request.auth.uid in members()
                       && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false;
+
+        // Изменить отправленное по-прежнему нельзя никому: на этом держится метка
+        // прочтения — она живёт в шапке именно потому, что сообщение неизменяемо.
+        allow update: if false;
+
+        // Удаление открыто ровно тем, кто вправе стереть диалог целиком: рекурсивного
+        // удаления у клиента Firestore нет, вычищать подколлекции приходится ему
+        // самому, а Cloud Functions требуют платного тарифа — того самого, из-за
+        // которого здесь нет и Cloud Storage.
+        //
+        // Плата за это честная, и её видно: тот же человек может стереть и одно
+        // сообщение, не трогая остальные. Кнопки для этого в приложении нет, но
+        // правило её разрешает, и притворяться, будто нет, не стоит.
+        allow delete: if erasable(header());
       }
     }
   }

@@ -26,10 +26,18 @@ extension UIViewController {
     //MARK: Подтверждение действия, у которого есть неочевидная цена. Согласие идёт первой
     // кнопкой и словами о том, что произойдёт, а не «Ок»: из «Ок» не видно, на что
     // соглашаешься.
-    func showConfirm(title: String, message: String, action: String, onConfirm: @escaping () -> Void) {
+    //
+    //MARK: `destructive` красит согласие красным — не украшение, а системный знак
+    // необратимости: им отмечено то, что не отменяется. Разбрасываться им нельзя, иначе
+    // он перестанет читаться там, где нужен, — поэтому по умолчанию его нет.
+    func showConfirm(title: String,
+                     message: String,
+                     action: String,
+                     destructive: Bool = false,
+                     onConfirm: @escaping () -> Void) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
 
-        alert.addAction(UIAlertAction(title: action, style: .default) { _ in
+        alert.addAction(UIAlertAction(title: action, style: destructive ? .destructive : .default) { _ in
             onConfirm()
         })
         alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))

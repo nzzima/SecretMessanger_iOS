@@ -23,7 +23,15 @@ class MessangerManager {
     // поэтому идёт отдельным сигналом наверх, а не строкой в консоли.
     var onAccessLost: (() -> Void)?
 
-    private var accessLostHandled = false
+    //MARK: Диалог стёрли целиком — это не то же самое, что вычеркнули из состава, и
+    // словами это разное. Отличить одно от другого можно точно, см. `observeConversation`.
+    var onChatDeleted: (() -> Void)?
+
+    //MARK: Общий на оба конца: и отказ по правам, и удаление означают, что экран
+    // кончился, а объявить об этом надо один раз. Без него участник, у которого стёрли
+    // группу, получил бы поверх «группа удалена» ещё и «вас удалили из группы» — от
+    // второго слушателя, которому отказ прилетит следом.
+    private var exitAnnounced = false
 
     //MARK: Здесь же рождается ключ диалога — до первого сообщения, иначе шифровать
     // было бы нечем.
@@ -235,6 +243,15 @@ class MessangerManager {
                     return
                 }
 
+                //MARK: Шапки нет — диалог стёрли. От «нас вычеркнули из состава» это
+                // отличается надёжно: `ensureConversation` заводит шапку до подписки,
+                // так что к этому моменту она заведомо существовала. Вычёркивание
+                // приходит отказом по правам, удаление — вот этим пустым снапшотом.
+                if let snap, !snap.exists {
+                    self?.announceDeleted()
+                    return
+                }
+
                 //MARK: Шапка прочиталась — значит мы в составе, и отметка о выходе
                 // из этого диалога устарела.
                 ChatExit.forget(chat.id)
@@ -286,8 +303,8 @@ class MessangerManager {
         //MARK: Флаг ставим до всех проверок: слушателей два, отказ приходит каждому,
         // и без него сообщение задвоилось бы, а отметку о добровольном выходе снял бы
         // первый — второй счёл бы тот же выход удалением.
-        guard !accessLostHandled else { return }
-        accessLostHandled = true
+        guard !exitAnnounced else { return }
+        exitAnnounced = true
 
         //MARK: Слушатели снимаем сами: после отказа они уже ничего не принесут, а
         // висеть до закрытия экрана будут.
@@ -297,6 +314,19 @@ class MessangerManager {
 
         DispatchQueue.main.async { [weak self] in
             self?.onAccessLost?()
+        }
+    }
+
+    //MARK: Слушатели снимаются здесь по той же причине, что и при отказе: диалога
+    // больше нет, приносить им нечего, а висеть до закрытия экрана они будут.
+    private func announceDeleted() {
+        guard !exitAnnounced else { return }
+        exitAnnounced = true
+
+        stopObserving()
+
+        DispatchQueue.main.async { [weak self] in
+            self?.onChatDeleted?()
         }
     }
 

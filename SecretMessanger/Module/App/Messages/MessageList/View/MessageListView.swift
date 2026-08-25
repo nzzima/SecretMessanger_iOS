@@ -10,6 +10,7 @@ import UIKit
 
 protocol MessageListViewProtocol: AnyObject {
     func reloadTable()
+    func showError(_ message: String)
 }
 
 class MessageListView: UIViewController, MessageListViewProtocol {
@@ -79,6 +80,10 @@ class MessageListView: UIViewController, MessageListViewProtocol {
         // до этой правки вкладка «Чаты» выглядела сломанной.
         emptyLabel.isHidden = !presenter.conversations.isEmpty
     }
+
+    func showError(_ message: String) {
+        showErrorAlert(message)
+    }
 }
 
 extension MessageListView: UITableViewDataSource {
@@ -108,5 +113,46 @@ extension MessageListView: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let messanger = Builder.getMessangerView(chat: presenter.chat(at: indexPath.row))
         navigationController?.pushViewController(messanger, animated: true)
+    }
+
+    //MARK: Свайп, а не кнопка в шапке диалога: удаление отсюда стирает переписку у всех
+    // участников и не отменяется. Жест плюс подтверждение — ровно та цена, которую
+    // такое действие должно стоить, и ровно то место, где его ищут.
+    //
+    // Строки без права на удаление свайпа не имеют вовсе: серую кнопку, которая
+    // отказывает после нажатия, участник группы видел бы на каждой её строке.
+    func tableView(_ tableView: UITableView,
+                   trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        guard presenter.canDelete(at: indexPath.row) else { return nil }
+
+        let delete = UIContextualAction(style: .destructive, title: "Удалить") { [weak self] _, _, done in
+            //MARK: `false` — «действие не выполнено», и это здесь правда: строку мы не
+            // убираем. Сказать `true` значило бы пообещать таблице удалённую строку,
+            // которой нет, — и получить её обратно рывком, если человек передумает в
+            // подтверждении. Настоящее исчезновение приносит слушатель, когда диалога
+            // не станет в базе.
+            done(false)
+
+            self?.confirmDelete(at: indexPath.row)
+        }
+
+        return UISwipeActionsConfiguration(actions: [delete])
+    }
+
+    private func confirmDelete(at index: Int) {
+        guard presenter.conversations.indices.contains(index) else { return }
+
+        let isGroup = presenter.conversations[index].isGroup
+
+        //MARK: В вопросе — что именно случится, а не «вы уверены». Уверенность тут
+        // ничего не стоит, а «сотрётся у всех и навсегда» стоит.
+        showConfirm(title: isGroup ? "Удалить группу?" : "Удалить диалог?",
+                    message: isGroup
+                        ? "Переписка и вложения сотрутся у всех участников. Вернуть их будет нельзя."
+                        : "Переписка и вложения сотрутся у обоих. Вернуть их будет нельзя.",
+                    action: "Удалить",
+                    destructive: true) { [weak self] in
+            self?.presenter.delete(at: index)
+        }
     }
 }

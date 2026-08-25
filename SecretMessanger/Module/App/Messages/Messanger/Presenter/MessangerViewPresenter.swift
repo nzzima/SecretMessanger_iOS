@@ -138,6 +138,12 @@ class MessangerViewPresenter: MessangerViewPresenterProtocol {
             self?.view?.accessLost()
         }
 
+        //MARK: Диалог стёрли — экрану тоже конец, но по другой причине и другими
+        // словами: удалили переписку, а не нас из неё.
+        messangerManager.onChatDeleted = { [weak self] in
+            self?.view?.chatDeleted()
+        }
+
         messangerManager.ensureConversation(chat: chat) { [weak self] in
             self?.observeConversation()
             self?.observeMessages()

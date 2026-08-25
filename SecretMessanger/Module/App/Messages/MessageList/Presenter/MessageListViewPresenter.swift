@@ -14,6 +14,14 @@ protocol MessageListViewPresenterProtocol: AnyObject {
 
     /// Версия аватара собеседника; ноль — аватара нет или мы его ещё не спросили.
     func avatarVersion(for uid: String) -> Int
+
+    /// Показывать ли свайп удаления: диалог на двоих стирает любой из двоих, группу —
+    /// только создатель. Настоящая проверка стоит в правилах, эта решает вид строки.
+    func canDelete(at index: Int) -> Bool
+
+    /// Стирает диалог у всех участников. Строка уходит из списка сама, слушателем: он
+    /// же приносит и удаление, сделанное с другого устройства.
+    func delete(at index: Int)
 }
 
 class MessageListViewPresenter: MessageListViewPresenterProtocol {
@@ -83,5 +91,30 @@ class MessageListViewPresenter: MessageListViewPresenterProtocol {
 
     func chat(at index: Int) -> Chat {
         conversations[index].chat
+    }
+
+    //MARK: Индекс здесь проверяется, а не берётся на веру. Список перечитывается на
+    // каждое сообщение в любом из диалогов и пересобирается по дате — между свайпом,
+    // подтверждением и нажатием «Удалить» строка успевает и уехать, и исчезнуть.
+    func canDelete(at index: Int) -> Bool {
+        guard conversations.indices.contains(index) else { return false }
+
+        return conversations[index].chat.canErase
+    }
+
+    func delete(at index: Int) {
+        guard conversations.indices.contains(index) else { return }
+
+        let chat = conversations[index].chat
+
+        guard chat.canErase else { return }
+
+        messageListManager.delete(chat: chat) { [weak self] err in
+            guard let err else { return }
+
+            DispatchQueue.main.async {
+                self?.view?.showError(err.localizedDescription)
+            }
+        }
     }
 }

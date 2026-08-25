@@ -19,6 +19,7 @@ protocol MessangerViewProtocol: AnyObject {
     func recordingStopped()
     func microphoneGranted()
     func accessLost()
+    func chatDeleted()
     func locationSearchStarted()
     func locationSearchStopped()
     func confirmApproximateLocation(onSend: @escaping () -> Void)
@@ -303,6 +304,20 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
 
         top.showAlert(title: "Вас удалили из группы",
                       message: "Её переписка вам больше не видна.") { [weak self] in
+            self?.navigationController?.popToRootViewController(animated: true)
+        }
+    }
+
+    //MARK: Диалог стёрли — и не у нас одних. Уходим тем же путём, что и при удалении из
+    // группы: алерт с верхнего экрана (поверх переписки могут быть открыты «Участники»)
+    // и возврат к списку чатов.
+    func chatDeleted() {
+        let top = navigationController?.topViewController ?? self
+
+        top.showAlert(title: presenter.isGroup ? "Группа удалена" : "Диалог удалён",
+                      message: presenter.isGroup
+                        ? "Переписка стёрта у всех участников."
+                        : "Переписка стёрта у обоих.") { [weak self] in
             self?.navigationController?.popToRootViewController(animated: true)
         }
     }

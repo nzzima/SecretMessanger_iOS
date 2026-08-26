@@ -20,16 +20,42 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     //MARK: Подпись и значение стоят рядом, в одной строке кода. Раньше подписи лежали
     // здесь массивом, а значения приходили из менеджера другим массивом, и совпадали
     // они только порядком — договором, который ничто не проверяло.
+    //MARK: Имя и заметка ушли из таблицы наверх, к аватару: это то, чем человек
+    // представляется, а не поле анкеты. В карточке остались логин и имя — то, что
+    // читают как справку.
+    //
+    //MARK: Идентификатор уехал вниз отдельной секцией и стал моноширинным. Раньше он
+    // стоял **первой** строкой, то есть на месте заголовка — а это двадцативосьмизначная
+    // техническая строка, которую не читают вовсе и не показывают никому.
     private var rows: [(title: String, value: String)] {
         guard let user = presenter.activeUser else { return [] }
 
         return [
-            ("Идентификатор", user.id),
             ("Логин", user.login),
-            ("Имя", user.name),
-            ("Заметка", user.someInfo)
+            ("Имя", user.name)
         ]
     }
+
+    private var identifier: String { presenter.activeUser?.id ?? "" }
+
+    private let nameLabel: UILabel = {
+        $0.font = .systemFont(ofSize: 21, weight: .semibold)
+        $0.textColor = .ink
+        $0.textAlignment = .center
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        return $0
+    }(UILabel())
+
+    //MARK: Заметка под именем, а не строкой в таблице: это то, что человек написал о
+    // себе сам, и читается оно вместе с именем, а не наравне с логином.
+    private let noteLabel: UILabel = {
+        $0.font = .systemFont(ofSize: 14)
+        $0.textColor = .inkDim
+        $0.textAlignment = .center
+        $0.numberOfLines = 0
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        return $0
+    }(UILabel())
 
     lazy var imageView = AvatarImageView.profile()
     
@@ -51,7 +77,7 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         $0.dataSource = self
         $0.backgroundColor = .bgMain
         $0.delegate = self
-        $0.tintColor = .white
+        $0.tintColor = .ink
         $0.separatorColor = .hairline
         $0.alwaysBounceVertical = false
         $0.translatesAutoresizingMaskIntoConstraints = false
@@ -64,7 +90,7 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         navigationItem.title = "Профиль"
         let itemRightBar = UIBarButtonItem(customView: rigthBarButton)
         navigationItem.rightBarButtonItem = itemRightBar
-        view.addSubviews(imageView, tableView)
+        view.addSubviews(imageView, nameLabel, noteLabel, tableView)
 
         setConstraints()
 
@@ -100,32 +126,61 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         // `viewDidLoad`.
         guard isViewLoaded else { return }
 
+        nameLabel.text = presenter.activeUser?.name
+        noteLabel.text = presenter.activeUser?.someInfo
+        noteLabel.isHidden = presenter.activeUser?.someInfo.isEmpty ?? true
+
         tableView.reloadData()
     }
 
     private func setConstraints() {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50),
+            imageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             imageView.widthAnchor.constraint(equalToConstant: AvatarImageView.profileDiameter),
             imageView.heightAnchor.constraint(equalToConstant: AvatarImageView.profileDiameter),
-            
-            tableView.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 30),
-            tableView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            tableView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
-            tableView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.5)
+
+            nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+
+            noteLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 3),
+            noteLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            noteLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+
+            //MARK: Таблица тянется до низа экрана, а не занимает половину его высоты.
+            // Доля от высоты подгонялась под четыре строки; их осталось две плюс
+            // идентификатор, и та же доля оставила бы под ними пустоту.
+            tableView.topAnchor.constraint(equalTo: noteLabel.bottomAnchor, constant: 16),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
 }
 
 extension ProfileView: UITableViewDataSource {
+
+    //MARK: Две секции — две карточки: справка о себе и техническая строка под ней.
+    // В одной они стояли бы наравне, а они не наравне.
+    func numberOfSections(in tableView: UITableView) -> Int {
+        presenter.activeUser == nil ? 0 : 2
+    }
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        rows.count
+        section == 0 ? rows.count : 1
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+
+        guard indexPath.section == 0 else {
+            cell.configureField(title: "Идентификатор", value: identifier, mono: true)
+
+            return cell
+        }
+
         let row = rows[indexPath.row]
 
         cell.configureField(title: row.title, value: row.value)

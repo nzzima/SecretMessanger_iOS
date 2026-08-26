@@ -18,7 +18,10 @@ extension UITableViewCell {
     /// - Parameters:
     ///   - title: что это за поле — «Логин», «Заметка».
     ///   - value: само значение; пустое остаётся пустым, заглушек здесь нет.
-    func configureField(title: String, value: String) {
+    ///   - mono: моноширинное значение — для того, что читают по знакам, а не словами.
+    ///     Такому полю и подпись, и значение достаются приглушёнными: это техническая
+    ///     справка, а не то, ради чего экран открывают.
+    func configureField(title: String, value: String, mono: Bool = false) {
         backgroundColor = .bgMain
         selectionStyle = .none
 
@@ -28,8 +31,10 @@ extension UITableViewCell {
         config.secondaryText = value
         config.textProperties.color = .inkDim
         config.textProperties.font = .systemFont(ofSize: 14)
-        config.secondaryTextProperties.color = .ink
-        config.secondaryTextProperties.font = .systemFont(ofSize: 18)
+        config.secondaryTextProperties.color = mono ? .inkDim : .ink
+        config.secondaryTextProperties.font = mono
+            ? .monospacedSystemFont(ofSize: 13, weight: .regular)
+            : .systemFont(ofSize: 18)
 
         contentConfiguration = config
     }

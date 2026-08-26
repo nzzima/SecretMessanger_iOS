@@ -99,11 +99,36 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         return $0
     }(UILabel())
 
+    //MARK: Первый из двух знаков шифрования во всём приложении. Приглушённый и рядом с
+    // именем: говорит один раз за экран, что переписка запечатана. На каждом бабле такой
+    // замок был бы шумом, а не доверием — приложение, без конца напоминающее о своей
+    // безопасности, выглядит менее безопасным, а не более.
+    //
+    //MARK: Показывается только там, где шифрование действительно есть. Диалоги, начатые
+    // до его появления, ключа не имеют, и замок над ними был бы враньём — тем более
+    // дорогим, что верят ему на слово.
+    private lazy var lockIcon: UIImageView = {
+        $0.image = UIImage(systemName: "lock.fill")
+        $0.tintColor = .inkDim
+        $0.contentMode = .scaleAspectFit
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        $0.widthAnchor.constraint(equalToConstant: 11).isActive = true
+        $0.heightAnchor.constraint(equalToConstant: 13).isActive = true
+        return $0
+    }(UIImageView())
+
+    private lazy var titleRow: UIStackView = {
+        $0.axis = .horizontal
+        $0.alignment = .center
+        $0.spacing = 5
+        return $0
+    }(UIStackView(arrangedSubviews: [headerTitle, lockIcon]))
+
     private lazy var headerView: UIStackView = {
         $0.axis = .vertical
         $0.alignment = .center
         return $0
-    }(UIStackView(arrangedSubviews: [headerTitle, headerStatus]))
+    }(UIStackView(arrangedSubviews: [titleRow, headerStatus]))
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -111,11 +136,10 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         title = presenter.title
         showMessageTimestampOnSwipeLeft = true
 
-        //MARK: Только у диалога на двоих: присутствие группы — это присутствие
+        //MARK: Шапка своя у всех диалогов — ради замка. Присутствие при этом
+        // остаётся только у переписки на двоих: присутствие группы — это присутствие
         // нескольких человек, и одной строкой оно не выражается.
-        if !presenter.isGroup {
-            navigationItem.titleView = headerView
-        }
+        navigationItem.titleView = headerView
 
         reloadTitle()
 
@@ -380,6 +404,11 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         headerTitle.text = presenter.title
         headerStatus.text = presenter.status
         headerStatus.isHidden = presenter.status.isEmpty
+
+        //MARK: Замок обновляется вместе с шапкой, а не выставляется один раз при её
+        // создании: ключ диалога может приехать при открытом экране — например, когда
+        // создатель дозапечатывает его тому, кто раньше не публиковал открытый ключ.
+        lockIcon.isHidden = !presenter.chat.isEncrypted
     }
 
     func showError(_ message: String) {

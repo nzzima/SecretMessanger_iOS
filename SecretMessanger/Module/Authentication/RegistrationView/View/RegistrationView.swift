@@ -29,7 +29,7 @@ class RegistrationView: UIViewController, RegistrationViewProtocol {
 
     let pageTitle: UILabel = {
         $0.text = "Регистрация"
-        $0.textColor = .white
+        $0.textColor = .ink
         $0.translatesAutoresizingMaskIntoConstraints = false
         $0.font = UIFont(name: "Copperplate", size: 26)
         return $0
@@ -51,7 +51,7 @@ class RegistrationView: UIViewController, RegistrationViewProtocol {
 
     private lazy var toAuthorizationButton: UIButton = {
         $0.setTitle("Уже есть аккаунт? Войти", for: .normal)
-        $0.setTitleColor(.faceid, for: .normal)
+        $0.setTitleColor(.accent, for: .normal)
         $0.titleLabel?.font = .systemFont(ofSize: 15)
         $0.translatesAutoresizingMaskIntoConstraints = false
         $0.addAction(UIAction(handler: { [weak self] _ in

@@ -55,7 +55,7 @@ struct Photo: MediaItem {
         format.scale = 1
 
         return UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1), format: format).image { context in
-            UIColor.darkGray.setFill()
+            UIColor.raised.setFill()
             context.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
         }
     }()
@@ -69,11 +69,11 @@ struct Photo: MediaItem {
         format.scale = 1
 
         return UIGraphicsImageRenderer(size: size, format: format).image { context in
-            UIColor.darkGray.setFill()
+            UIColor.raised.setFill()
             context.fill(CGRect(origin: .zero, size: size))
 
             guard let lock = UIImage(systemName: "lock.fill")?
-                .withTintColor(.lightGray, renderingMode: .alwaysOriginal) else { return }
+                .withTintColor(.inkDim, renderingMode: .alwaysOriginal) else { return }
 
             let side: CGFloat = 44
             lock.draw(in: CGRect(x: (size.width - side) / 2,

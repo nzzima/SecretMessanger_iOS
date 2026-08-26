@@ -24,25 +24,25 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     
     let loginLabel: UILabel = {
         $0.text = "Логин"
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         return $0
     }(UILabel())
     
     let nameLabel: UILabel = {
         $0.text = "Имя"
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         return $0
     }(UILabel())
     
     let someInfoLabel: UILabel = {
         $0.text = "Заметка"
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         return $0
     }(UILabel())
     
     lazy var editAvatar: UIButton = {
         $0.setTitle("Изменить аватар", for: .normal)
-        $0.setTitleColor(.faceid, for: .normal)
+        $0.setTitleColor(.accent, for: .normal)
         $0.addTarget(self, action: #selector(tappedEditAvatar), for: .touchUpInside)
         return $0
     }(UIButton())
@@ -51,7 +51,7 @@ class EditProfileView: UIViewController, EditProfileViewProtocol {
     // оба человек ищет там, где меняет свои данные.
     lazy var transferKey: UIButton = {
         $0.setTitle("Перенести ключ на другое устройство", for: .normal)
-        $0.setTitleColor(.faceid, for: .normal)
+        $0.setTitleColor(.accent, for: .normal)
         $0.titleLabel?.font = .systemFont(ofSize: 15)
         $0.addTarget(self, action: #selector(tappedTransferKey), for: .touchUpInside)
         return $0

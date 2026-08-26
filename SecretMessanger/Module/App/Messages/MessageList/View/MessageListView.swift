@@ -36,7 +36,7 @@ class MessageListView: UIViewController, MessageListViewProtocol {
 
     private let emptyLabel: UILabel = {
         $0.text = "Пока ни одного диалога.\nНачните переписку из «Контактов»."
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         $0.font = .systemFont(ofSize: 16)
         $0.numberOfLines = 0
         $0.textAlignment = .center

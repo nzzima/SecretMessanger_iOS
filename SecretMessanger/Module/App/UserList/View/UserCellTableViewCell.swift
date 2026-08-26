@@ -21,7 +21,9 @@ class UserCellTableViewCell: UITableViewCell {
     // включён `clipsToBounds`, и на самом аватаре её срезало бы ровно по краю круга —
     // то есть наполовину, потому что сидит она как раз на границе.
     private lazy var onlineDot: UIView = {
-        $0.backgroundColor = .systemGreen
+        //MARK: Зелёный здесь смысловой, а не акцентный: он значит «в сети» и больше
+        // ничего. Акцент в приложении один и синий.
+        $0.backgroundColor = .online
         $0.layer.cornerRadius = UserCellTableViewCell.dotDiameter / 2
         $0.layer.borderWidth = 2
         $0.layer.borderColor = UIColor.bgMain.cgColor
@@ -61,9 +63,9 @@ class UserCellTableViewCell: UITableViewCell {
             onlineDot.bottomAnchor.constraint(equalTo: userImage.bottomAnchor, constant: 2)
         ])
 
+        //MARK: Обводка убрана по той же причине, что и в списке чатов: рамка вокруг
+        // каждой строки предлагала читать список как набор карточек, хотя это список.
         parentView.layer.cornerRadius = 10
-        parentView.layer.borderColor = UIColor.lightGray.cgColor
-        parentView.layer.borderWidth = 0.5
         userImage.layer.cornerRadius = userImage.frame.width / 2
         userImage.showPlaceholder()
     }

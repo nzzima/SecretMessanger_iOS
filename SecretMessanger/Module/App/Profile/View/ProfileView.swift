@@ -52,7 +52,7 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         $0.backgroundColor = .bgMain
         $0.delegate = self
         $0.tintColor = .white
-        $0.separatorColor = .darkGray
+        $0.separatorColor = .hairline
         $0.alwaysBounceVertical = false
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0

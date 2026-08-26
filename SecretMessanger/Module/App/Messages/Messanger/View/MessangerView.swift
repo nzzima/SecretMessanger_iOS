@@ -38,7 +38,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     // «набрано, но не отправлено», и отдельная кнопка «стоп» ему не нужна.
     private lazy var micButton: InputBarButtonItem = {
         $0.image = UIImage(systemName: "mic.fill")
-        $0.tintColor = .systemBlue
+        $0.tintColor = .accent
         $0.setSize(CGSize(width: 36, height: 36), animated: false)
         $0.addGestureRecognizer(micGesture)
         return $0
@@ -51,7 +51,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     // без удержания — держать приходится микрофон, и путать эти два жеста ни к чему.
     private lazy var attachButton: InputBarButtonItem = {
         $0.image = UIImage(systemName: "paperclip")
-        $0.tintColor = .systemBlue
+        $0.tintColor = .accent
         $0.setSize(CGSize(width: 36, height: 36), animated: false)
         $0.showsMenuAsPrimaryAction = true
         $0.menu = UIMenu(children: [
@@ -87,14 +87,14 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     // экране, а её `titleView` не заменяет.
     private lazy var headerTitle: UILabel = {
         $0.font = .systemFont(ofSize: 17, weight: .semibold)
-        $0.textColor = .white
+        $0.textColor = .ink
         $0.textAlignment = .center
         return $0
     }(UILabel())
 
     private lazy var headerStatus: UILabel = {
         $0.font = .systemFont(ofSize: 12)
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         $0.textAlignment = .center
         return $0
     }(UILabel())
@@ -166,22 +166,29 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     }
 
     //MARK: Панель ввода из MessageKit по умолчанию белая — на тёмном приложении она
-    // выглядела чужой заплаткой. Фон берём `tabBar`: панель стоит вплотную к таб-бару
-    // и должна читаться с ним как одна поверхность, а не спорить с ней.
+    // выглядела чужой заплаткой.
+    //
+    //MARK: Фон был `tabBar`, чтобы панель читалась с таб-баром как одна поверхность.
+    // Теперь он равен фону переписки, а отделяет её волосяная линия: панель принадлежит
+    // ленте, а не нижней рамке экрана, и собственной плашкой она эту ленту обрезала.
     private func settingInputBar() {
-        messageInputBar.backgroundView.backgroundColor = .tabBar
-        messageInputBar.separatorLine.backgroundColor = .darkGray
+        messageInputBar.backgroundView.backgroundColor = .bgMain
+        messageInputBar.separatorLine.backgroundColor = .hairline
         messageInputBar.padding = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
 
-        //MARK: Само поле повторяет текстовые поля авторизации: чёрный фон, белый текст,
-        // серый плейсхолдер, скругление 15 — см. Helpers/TextField.
-        messageInputBar.inputTextView.backgroundColor = .black
-        messageInputBar.inputTextView.textColor = .white
-        messageInputBar.inputTextView.tintColor = .systemBlue
+        //MARK: Само поле повторяет текстовые поля авторизации: поднятый фон, светлый
+        // текст, приглушённый плейсхолдер, скругление 15 — см. Helpers/TextField.
+        //
+        //MARK: Чёрный фон поля ушёл вместе с ним. Чёрное на тёмно-синем — это провал,
+        // а не поверхность: поле выглядело дырой в экране. «Поднятое» светлее фона, и
+        // поле читается как то, на чём пишут.
+        messageInputBar.inputTextView.backgroundColor = .raised
+        messageInputBar.inputTextView.textColor = .ink
+        messageInputBar.inputTextView.tintColor = .accent
         messageInputBar.inputTextView.font = .systemFont(ofSize: 16)
         messageInputBar.inputTextView.keyboardAppearance = .dark
         messageInputBar.inputTextView.placeholder = "Сообщение"
-        messageInputBar.inputTextView.placeholderTextColor = .gray
+        messageInputBar.inputTextView.placeholderTextColor = .inkDim
         messageInputBar.inputTextView.layer.cornerRadius = 15
         messageInputBar.inputTextView.layer.masksToBounds = true
         messageInputBar.inputTextView.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
@@ -194,13 +201,13 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         messageInputBar.sendButton.image = UIImage(systemName: "arrow.up.circle.fill")
         messageInputBar.sendButton.imageView?.contentMode = .scaleAspectFit
         messageInputBar.sendButton.setSize(CGSize(width: 36, height: 36), animated: false)
-        messageInputBar.sendButton.onEnabled { $0.tintColor = .systemBlue }
-        messageInputBar.sendButton.onDisabled { $0.tintColor = .darkGray }
+        messageInputBar.sendButton.onEnabled { $0.tintColor = .accent }
+        messageInputBar.sendButton.onDisabled { $0.tintColor = .inkDim }
 
         //MARK: Хуки срабатывают только на смену состояния, а кнопка создаётся уже
         // выключенной — до первого введённого символа она осталась бы с дефолтным
         // цветом. Красим по текущему состоянию.
-        messageInputBar.sendButton.tintColor = messageInputBar.sendButton.isEnabled ? .systemBlue : .darkGray
+        messageInputBar.sendButton.tintColor = messageInputBar.sendButton.isEnabled ? .accent : .inkDim
 
         messageInputBar.setLeftStackViewWidthConstant(to: 40, animated: false)
         messageInputBar.setStackViewItems([attachButton], forStack: .left, animated: false)
@@ -244,7 +251,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     //MARK: Подсказка, в отличие от записи и поиска геопозиции, не состояние, а ответ
     // на только что случившееся — поэтому уходит сама, без второго события.
     private func showHint(_ text: String) {
-        showStatus(text, color: .lightGray)
+        showStatus(text, color: .inkDim)
 
         hintTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
             self?.hideStatus()
@@ -283,7 +290,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         recordingTimer = nil
 
         hideStatus()
-        micButton.tintColor = .systemBlue
+        micButton.tintColor = .accent
     }
 
     //MARK: Первое удержание уходит на системное окно с вопросом про микрофон, и
@@ -325,7 +332,7 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
     // MARK: - Поиск геопозиции
 
     func locationSearchStarted() {
-        showStatus("◌ Определяем геопозицию…", color: .lightGray)
+        showStatus("◌ Определяем геопозицию…", color: .inkDim)
         attachButton.isEnabled = false
     }
 
@@ -498,7 +505,7 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
 
         return NSAttributedString(string: message.sender.displayName, attributes: [
             .font: UIFont.systemFont(ofSize: 13),
-            .foregroundColor: UIColor.lightGray
+            .foregroundColor: UIColor.inkDim
         ])
     }
 
@@ -512,11 +519,14 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
     }
 
     func backgroundColor(for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIColor {
-        isFromSelf(message) ? .systemBlue : .darkGray
+        //MARK: Оба бабла весят одинаково. Чужой был темнее фона и почти сливался с ним,
+        // свой — насыщенный системный синий: разговор выглядел монологом, где слышно
+        // только себя. Теперь чужой светлее фона, а свой приглушён.
+        isFromSelf(message) ? .ownBubble : .raised
     }
 
     func textColor(for message: any MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIColor {
-        .white
+        .ink
     }
 
     //MARK: Галочки приписываются к времени, а не занимают свою строку: под баблом уже
@@ -530,7 +540,7 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
             string: message.sentDate.formatted(date: .omitted, time: .shortened),
             attributes: [
                 .font: UIFont.systemFont(ofSize: 10),
-                .foregroundColor: UIColor.gray
+                .foregroundColor: UIColor.inkDim
             ])
 
         //MARK: Только на своих. Чужому сообщению «прочитано» ничего не сообщает — я его
@@ -541,7 +551,7 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
 
         time.append(NSAttributedString(string: read ? " ✓✓" : " ✓", attributes: [
             .font: UIFont.systemFont(ofSize: 10),
-            .foregroundColor: read ? UIColor.systemBlue : UIColor.gray
+            .foregroundColor: read ? UIColor.accent : UIColor.inkDim
         ]))
 
         return time
@@ -599,7 +609,7 @@ extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
         let initials = message.sender.displayName.first?.uppercased() ?? "?"
         let image = presenter.avatar(for: message.sender.senderId)
 
-        avatarView.backgroundColor = isFromSelf(message) ? .systemBlue : .darkGray
+        avatarView.backgroundColor = isFromSelf(message) ? .ownBubble : .raised
         avatarView.set(avatar: Avatar(image: image, initials: initials))
     }
 

@@ -19,7 +19,7 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
     
     let pageTitle1: UILabel = {
             $0.text = "Мессенджер"
-            $0.textColor = .white
+            $0.textColor = .ink
             $0.translatesAutoresizingMaskIntoConstraints = false
             $0.font = UIFont(name: "Copperplate", size: 36)
             return $0
@@ -27,19 +27,19 @@ class BiometricAuthorizationView: UIViewController, BiometricAuthorizationViewPr
     
     let pageTitle2: UILabel = {
             $0.text = "заблокирован"
-            $0.textColor = .white
+            $0.textColor = .ink
             $0.translatesAutoresizingMaskIntoConstraints = false
             $0.font = UIFont(name: "Copperplate", size: 36)
             return $0
         }(UILabel())
     
-    private lazy var biometricAuthButton:UIButton = Button(buttonText: " Face ID",buttonImage: UIImage(systemName: "faceid") ?? UIImage(), buttonColor: .white, titleColor: .faceid) {
+    private lazy var biometricAuthButton:UIButton = Button(buttonText: " Face ID",buttonImage: UIImage(systemName: "faceid") ?? UIImage(), buttonColor: .white, titleColor: .accent) {
             self.authButtonPressed()
         }
     
     let faceIdImage: UIImageView = {
         $0.image = UIImage(systemName: "faceid")
-        $0.tintColor = UIColor.faceid
+        $0.tintColor = UIColor.accent
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UIImageView())

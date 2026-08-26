@@ -63,7 +63,7 @@ final class AvatarImageView: UIImageView {
         view.layer.masksToBounds = true
         view.layer.cornerRadius = diameter / 2
         view.layer.borderWidth = borderWidth
-        view.layer.borderColor = UIColor.gray.cgColor
+        view.layer.borderColor = UIColor.hairline.cgColor
         view.translatesAutoresizingMaskIntoConstraints = false
 
         view.showPlaceholder()
@@ -123,8 +123,8 @@ final class AvatarImageView: UIImageView {
         image = UIImage(systemName: "person.2.fill",
                         withConfiguration: UIImage.SymbolConfiguration(pointSize: diameter / 2.3))
         contentMode = .center
-        tintColor = .lightGray
-        backgroundColor = .black
+        tintColor = .inkDim
+        backgroundColor = .raised
     }
 
     /// Общая заглушка — человек без фотографии.

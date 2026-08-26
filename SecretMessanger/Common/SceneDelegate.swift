@@ -138,7 +138,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
         let lock = UIImageView(image: UIImage(systemName: "lock.fill"))
-        lock.tintColor = .faceid
+        lock.tintColor = .accent
         lock.contentMode = .scaleAspectFit
         lock.translatesAutoresizingMaskIntoConstraints = false
 

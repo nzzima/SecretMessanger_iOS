@@ -24,15 +24,17 @@ class TextField: UITextField {
     
     private func setupTextField() {
         //placeholder = fieldPlaceholder
-        attributedPlaceholder = NSAttributedString(string: fieldPlaceholder, attributes: [.foregroundColor: UIColor.gray])
+        attributedPlaceholder = NSAttributedString(string: fieldPlaceholder, attributes: [.foregroundColor: UIColor.inkDim])
         
         isSecureTextEntry = isPassword
         leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
         leftViewMode = .always
         rightView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 1))
         rightViewMode = .always
-        backgroundColor = .black
-        textColor = .white
+        //MARK: Поле светлее фона, а не чернее его. Чёрное на тёмно-синем читалось
+        // дырой в экране; «поднятое» — это поверхность, на которой пишут.
+        backgroundColor = .raised
+        textColor = .ink
         layer.cornerRadius = 15
         autocapitalizationType = .none // Disabled field beginning with initial caps
         keyboardAppearance = .dark

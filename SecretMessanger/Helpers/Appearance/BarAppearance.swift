@@ -29,8 +29,8 @@ enum BarAppearance {
         navigation.configureWithOpaqueBackground()
         navigation.backgroundEffect = nil
         navigation.backgroundColor = .bgMain
-        navigation.shadowColor = .darkGray
-        navigation.titleTextAttributes = [.foregroundColor: UIColor.white]
+        navigation.shadowColor = .hairline
+        navigation.titleTextAttributes = [.foregroundColor: UIColor.ink]
 
         //MARK: Заголовок раньше красили семь экранов, каждый у себя. Строка была одна и
         // та же, и любой новый экран про неё забывал бы — как забыли про сами панели.
@@ -43,7 +43,7 @@ enum BarAppearance {
         tab.configureWithOpaqueBackground()
         tab.backgroundEffect = nil
         tab.backgroundColor = .tabBar
-        tab.shadowColor = .darkGray
+        tab.shadowColor = .hairline
 
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab

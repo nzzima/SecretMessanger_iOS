@@ -21,7 +21,7 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
     
     let pageTitle: UILabel = {
         $0.text = "Авторизация"
-        $0.textColor = .white
+        $0.textColor = .ink
         $0.translatesAutoresizingMaskIntoConstraints = false
         $0.font = UIFont(name: "Copperplate", size: 26)
         return $0
@@ -40,7 +40,7 @@ class AuthorizationView: UIViewController, AuthorizationViewProtocol {
     
     private lazy var toRegistrationButton: UIButton = {
         $0.setTitle("Нет аккаунта? Зарегистрироваться", for: .normal)
-        $0.setTitleColor(.faceid, for: .normal)
+        $0.setTitleColor(.accent, for: .normal)
         $0.titleLabel?.font = .systemFont(ofSize: 15)
         $0.translatesAutoresizingMaskIntoConstraints = false
         $0.addAction(UIAction(handler: { _ in

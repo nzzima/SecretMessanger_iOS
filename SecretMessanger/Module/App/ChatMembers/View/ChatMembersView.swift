@@ -25,7 +25,7 @@ class ChatMembersView: UIViewController, ChatMembersViewProtocol {
         $0.dataSource = self
         $0.delegate = self
         $0.backgroundColor = .bgMain
-        $0.separatorColor = .darkGray
+        $0.separatorColor = .hairline
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UITableView())

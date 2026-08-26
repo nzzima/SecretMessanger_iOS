@@ -13,10 +13,11 @@ class ConversationTableViewCell: UITableViewCell {
 
     static let reuseIdentifier = "ConversationTableViewCell"
 
+    //MARK: Обводка убрана. Карточка вокруг каждой строки спорила с самим списком: он
+    // и так последовательность строк, а рамка предлагала читать их как отдельные
+    // объекты. Разделяет их теперь волосяная линия — её рисует сама таблица.
     private let parentView: UIView = {
         $0.layer.cornerRadius = 10
-        $0.layer.borderColor = UIColor.lightGray.cgColor
-        $0.layer.borderWidth = 0.5
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UIView())
@@ -24,22 +25,25 @@ class ConversationTableViewCell: UITableViewCell {
     private let userImage = AvatarImageView.cell()
 
     private let loginLabel: UILabel = {
-        $0.textColor = .white
+        $0.textColor = .ink
         $0.font = .systemFont(ofSize: 17, weight: .semibold)
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UILabel())
 
     private let lastMessageLabel: UILabel = {
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         $0.font = .systemFont(ofSize: 14)
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UILabel())
 
     private let dateLabel: UILabel = {
-        $0.textColor = .gray
-        $0.font = .systemFont(ofSize: 12)
+        $0.textColor = .inkDim
+
+        //MARK: Моноширинные цифры: без них время в столбце пляшет по горизонтали от
+        // строки к строке, потому что «1» уже «0».
+        $0.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         $0.textAlignment = .right
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0

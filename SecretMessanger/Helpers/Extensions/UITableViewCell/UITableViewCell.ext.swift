@@ -19,16 +19,16 @@ extension UITableViewCell {
     ///   - title: что это за поле — «Логин», «Заметка».
     ///   - value: само значение; пустое остаётся пустым, заглушек здесь нет.
     func configureField(title: String, value: String) {
-        backgroundColor = .black
+        backgroundColor = .bgMain
         selectionStyle = .none
 
         var config = defaultContentConfiguration()
 
         config.text = title
         config.secondaryText = value
-        config.textProperties.color = .gray
+        config.textProperties.color = .inkDim
         config.textProperties.font = .systemFont(ofSize: 14)
-        config.secondaryTextProperties.color = .white
+        config.secondaryTextProperties.color = .ink
         config.secondaryTextProperties.font = .systemFont(ofSize: 18)
 
         contentConfiguration = config

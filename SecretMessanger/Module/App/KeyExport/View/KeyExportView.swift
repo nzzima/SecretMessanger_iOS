@@ -29,7 +29,7 @@ final class KeyExportView: UIViewController, KeyExportViewProtocol {
 
         Пароль нигде не хранится. Забудете — перенос придётся делать заново.
         """
-        $0.textColor = .lightGray
+        $0.textColor = .inkDim
         $0.font = .systemFont(ofSize: 14)
         $0.numberOfLines = 0
         return $0
@@ -47,7 +47,7 @@ final class KeyExportView: UIViewController, KeyExportViewProtocol {
 
     private lazy var exportButton: UIButton = {
         $0.setTitle("Показать ключ", for: .normal)
-        $0.setTitleColor(.faceid, for: .normal)
+        $0.setTitleColor(.accent, for: .normal)
         $0.addTarget(self, action: #selector(tappedExport), for: .touchUpInside)
         return $0
     }(UIButton())
@@ -63,7 +63,7 @@ final class KeyExportView: UIViewController, KeyExportViewProtocol {
     }(UIImageView())
 
     private let payloadLabel: UILabel = {
-        $0.textColor = .white
+        $0.textColor = .ink
         $0.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         $0.numberOfLines = 0
         $0.textAlignment = .center
@@ -73,7 +73,7 @@ final class KeyExportView: UIViewController, KeyExportViewProtocol {
 
     private lazy var copyButton: UIButton = {
         $0.setTitle("Скопировать строку", for: .normal)
-        $0.setTitleColor(.faceid, for: .normal)
+        $0.setTitleColor(.accent, for: .normal)
         $0.isHidden = true
         $0.addTarget(self, action: #selector(tappedCopy), for: .touchUpInside)
         return $0

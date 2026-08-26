@@ -56,8 +56,8 @@ class UserProfileView: UIViewController, UserProfileViewProtocol {
         $0.dataSource = self
         $0.delegate = self
         $0.backgroundColor = .bgMain
-        $0.tintColor = .white
-        $0.separatorColor = .darkGray
+        $0.tintColor = .ink
+        $0.separatorColor = .hairline
         $0.alwaysBounceVertical = false
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0

@@ -20,11 +20,17 @@ class UserListView: UIViewController, UserListViewProtocol {
     // MessageListView: он приводил к созданию двух таблиц, и список переставал
     // обновляться после первой отрисовки.
     lazy var tableView: UITableView = {
-        $0.register(UINib(nibName: "UserCellTableViewCell", bundle: nil), forCellReuseIdentifier: UserCellTableViewCell.reuseIdentifier)
+        $0.register(UserCellTableViewCell.self, forCellReuseIdentifier: UserCellTableViewCell.reuseIdentifier)
         $0.dataSource = self
         $0.backgroundColor = .bgMain
         $0.delegate = self
-        $0.separatorStyle = .none
+
+        //MARK: Волосяная линия вместо ничего. Раньше строки разделяла обводка вокруг
+        // каждой — теперь одна линия между ними, и начинается она под текстом, а не
+        // под аватаром: аватар к следующей строке не относится.
+        $0.separatorStyle = .singleLine
+        $0.separatorColor = .hairline
+        $0.separatorInset = UIEdgeInsets(top: 0, left: 72, bottom: 0, right: 0)
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UITableView())
@@ -84,12 +90,17 @@ extension UserListView: UITableViewDataSource {
         cell.selectionStyle = .none
         
         let cellItem = presenter.users[indexPath.row]
-        cell.configCell(cellItem, isOnline: presenter.isOnline(cellItem.id))
+        cell.configCell(cellItem,
+                        presence: presenter.presenceText(cellItem.id),
+                        isOnline: presenter.isOnline(cellItem.id))
         
         return cell
     }
         
+    //MARK: 64 pt вместо 100. Строка стала ниже, а несёт больше: имя и присутствие
+    // словами. Четыре контакта помещаются там, где помещалось три, и экран перестаёт
+    // быть наполовину пустым при трёх зарегистрированных.
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 100
+        return 64
     }
 }

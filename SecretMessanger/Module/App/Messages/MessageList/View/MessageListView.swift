@@ -29,7 +29,11 @@ class MessageListView: UIViewController, MessageListViewProtocol {
         $0.dataSource = self
         $0.delegate = self
         $0.backgroundColor = .bgMain
-        $0.separatorStyle = .none
+
+        //MARK: Волосяная линия вместо обводки вокруг каждой строки — см. «Контакты».
+        $0.separatorStyle = .singleLine
+        $0.separatorColor = .hairline
+        $0.separatorInset = UIEdgeInsets(top: 0, left: 72, bottom: 0, right: 0)
         $0.translatesAutoresizingMaskIntoConstraints = false
         return $0
     }(UITableView())
@@ -103,8 +107,9 @@ extension MessageListView: UITableViewDataSource {
         return cell
     }
 
+    //MARK: 72 pt вместо 90 — вслед за аватаром, ужавшимся до 44.
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        90
+        72
     }
 }
 

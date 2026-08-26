@@ -13,6 +13,12 @@ protocol UserListViewPresenterProtocol: AnyObject {
 
     /// В сети ли контакт прямо сейчас — для точки в его строке.
     func isOnline(_ uid: String) -> Bool
+
+    /// Подпись присутствия: «в сети», «в сети 20 минут назад», «в сети 12 августа».
+    ///
+    /// Пустая строка — «не знаем», а не «офлайн»: человек, ни разу не заходивший после
+    /// появления присутствия, документа не имеет вовсе, и подписать его нечем.
+    func presenceText(_ uid: String) -> String
 }
 
 class UserListViewPresenter: UserListViewPresenterProtocol {
@@ -21,10 +27,21 @@ class UserListViewPresenter: UserListViewPresenterProtocol {
     private let userListManager = UserListManager()
     private let presence = PresenceObserver(scope: .everyone)
 
-    //MARK: Хранится именно множество тех, кто в сети, а не сырые отметки времени. Пульс
-    // бьётся у каждого раз в полминуты, и перерисовывать таблицу на каждый удар значило
-    // бы дёргать её без конца — вместе с перезаказом аватаров. Список меняется только
-    // когда кто-то действительно зажёгся или погас, а это событие редкое.
+    //MARK: Хранятся готовые подписи, а не сырые отметки времени. Пульс бьётся у каждого
+    // раз в полминуты, и перерисовывать таблицу на каждый удар значило бы дёргать её без
+    // конца — вместе с перезаказом аватаров.
+    //
+    //MARK: Раньше здесь лежало множество тех, кто в сети, и таблица обновлялась, только
+    // когда кто-то зажигался или гас. С подписью словами этого мало: «в сети 20 минут
+    // назад» устаревает молча, само по себе, без единого события. Сравнивать нужно ровно
+    // то, что видно на экране, — и подписи как раз им и являются. Заодно они покрывают
+    // и точку: зажечься или погаснуть, не сменив подписи, нельзя.
+    //
+    // Тот же приём стоит в шапке диалога — см. `MessangerViewPresenter.observePresence`.
+    private var presenceTexts: [String: String] = [:]
+
+    //MARK: Считается в тот же момент, что и подписи, и хранится рядом: спрошенное у
+    // наблюдателя позже могло бы разойтись с тем, из-за чего таблицу перерисовали.
     private var onlineNow: Set<String> = []
 
     var users: [ChatUser] = []
@@ -43,15 +60,20 @@ class UserListViewPresenter: UserListViewPresenterProtocol {
     func isOnline(_ uid: String) -> Bool {
         onlineNow.contains(uid)
     }
+
+    func presenceText(_ uid: String) -> String {
+        presenceTexts[uid] ?? ""
+    }
     
     func getAllUsers() {
         userListManager.getAllUsers { [weak self] users in
             guard let self = self else { return }
             self.users = users
 
-            //MARK: Присутствие могло приехать раньше контактов — тогда множество считано
-            // по пустому списку и точки не зажглись бы до первого чужого удара.
-            self.onlineNow = self.currentlyOnline()
+            //MARK: Присутствие могло приехать раньше контактов — тогда оно считано по
+            // пустому списку, и ни точки, ни подписи не появились бы до первого чужого
+            // удара пульса.
+            self.refreshPresence()
 
             self.view?.reloadTable()
         }
@@ -61,16 +83,32 @@ class UserListViewPresenter: UserListViewPresenterProtocol {
         presence.start { [weak self] _ in
             guard let self else { return }
 
-            let online = self.currentlyOnline()
+            let texts = self.currentTexts()
 
-            guard online != self.onlineNow else { return }
+            guard texts != self.presenceTexts else { return }
 
-            self.onlineNow = online
+            self.refreshPresence()
             self.view?.reloadTable()
         }
     }
 
-    private func currentlyOnline() -> Set<String> {
-        Set(users.map { $0.id }.filter { presence.isOnline($0) })
+    private func refreshPresence() {
+        presenceTexts = currentTexts()
+        onlineNow = Set(users.map { $0.id }.filter { presence.isOnline($0) })
+    }
+
+    //MARK: Контакты без документа присутствия в карту не попадают вовсе — у них не
+    // «пустая подпись», а её отсутствие, и различать это незачем: ячейка на оба случая
+    // прячет строку.
+    private func currentTexts() -> [String: String] {
+        var texts: [String: String] = [:]
+
+        users.forEach { user in
+            guard let state = presence.status(of: user.id) else { return }
+
+            texts[user.id] = state.text()
+        }
+
+        return texts
     }
 }

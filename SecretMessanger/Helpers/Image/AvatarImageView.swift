@@ -32,7 +32,7 @@ final class AvatarImageView: UIImageView {
     static let profileDiameter: CGFloat = 120
 
     /// Диаметр кружка в строке списка, в точках.
-    static let cellDiameter: CGFloat = 60
+    static let cellDiameter: CGFloat = 44
 
     /// Чей аватар кружок ждёт прямо сейчас.
     ///
@@ -49,7 +49,9 @@ final class AvatarImageView: UIImageView {
         make(diameter: profileDiameter, borderWidth: 4)
     }
 
-    /// Кружок для строки списка: 60 pt, без обводки.
+    //MARK: 44 pt вместо прежних 60. Строка от этого стала ниже, а несёт больше: на
+    /// освободившееся место встала вторая подпись.
+    /// Кружок для строки списка: 44 pt, без обводки.
     static func cell() -> AvatarImageView {
         make(diameter: cellDiameter, borderWidth: 0)
     }

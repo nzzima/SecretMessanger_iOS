@@ -91,26 +91,26 @@ class ConversationTableViewCell: UITableViewCell {
 
     private func setConstraints() {
         NSLayoutConstraint.activate([
-            parentView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 5),
-            parentView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -5),
-            parentView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
-            parentView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            parentView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            parentView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            parentView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            parentView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
 
-            userImage.leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: 20),
+            userImage.leadingAnchor.constraint(equalTo: parentView.leadingAnchor, constant: 16),
             userImage.centerYAnchor.constraint(equalTo: parentView.centerYAnchor),
             userImage.widthAnchor.constraint(equalToConstant: AvatarImageView.cellDiameter),
             userImage.heightAnchor.constraint(equalToConstant: AvatarImageView.cellDiameter),
 
-            loginLabel.topAnchor.constraint(equalTo: userImage.topAnchor, constant: 4),
-            loginLabel.leadingAnchor.constraint(equalTo: userImage.trailingAnchor, constant: 15),
+            loginLabel.topAnchor.constraint(equalTo: userImage.topAnchor),
+            loginLabel.leadingAnchor.constraint(equalTo: userImage.trailingAnchor, constant: 12),
             loginLabel.trailingAnchor.constraint(lessThanOrEqualTo: dateLabel.leadingAnchor, constant: -10),
 
             dateLabel.centerYAnchor.constraint(equalTo: loginLabel.centerYAnchor),
-            dateLabel.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -20),
+            dateLabel.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -16),
 
-            lastMessageLabel.topAnchor.constraint(equalTo: loginLabel.bottomAnchor, constant: 6),
+            lastMessageLabel.topAnchor.constraint(equalTo: loginLabel.bottomAnchor, constant: 2),
             lastMessageLabel.leadingAnchor.constraint(equalTo: loginLabel.leadingAnchor),
-            lastMessageLabel.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -20)
+            lastMessageLabel.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -16)
         ])
     }
 }

@@ -2,7 +2,7 @@
 //  ChatDeletionTests.swift
 //  SecretMessangerTests
 //
-//  Created by Nikita Krylov on 25.08.2026.
+//  Created by Nikita Krylov on 26.08.2026.
 //
 
 import XCTest

@@ -153,7 +153,7 @@ final class DocumentContractTests: XCTestCase {
     /// Группа обязана попадать в список «Чаты» сразу. Без непустого `lastMessage`
     /// ``Conversation`` отбрасывает диалог, а другого входа в группу нет — из
     /// «Контактов» открывается только переписка на двоих. Созданная и не подписанная
-    /// группа оказывалась недостижимой навсегда; найдено живьём 25.08.2026.
+    /// группа оказывалась недостижимой навсегда; найдено живьём 26.08.2026.
     func testNewGroupHeaderCarriesCreationMark() {
         let header = manager.newHeader(chat: encryptedGroup(), keys: [:], date: date)
 

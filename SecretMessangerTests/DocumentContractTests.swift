@@ -18,6 +18,9 @@ import XCTest
 final class DocumentContractTests: XCTestCase {
 
     private let manager = MessangerManager()
+
+    //MARK: Отметку о ротации пишет тот же, кто ротирует ключ, — экран состава группы.
+    private let members = ChatMembersManager()
     private let date = Date(timeIntervalSince1970: 1_000_000)
     private var savedName = ""
 
@@ -188,6 +191,38 @@ final class DocumentContractTests: XCTestCase {
         XCTAssertEqual(header["owner"] as? String, "red-uid")
         XCTAssertEqual((header["logins"] as? [String: String])?["red-uid"], "red")
         XCTAssertEqual(header["keyVersion"] as? Int, 1)
+    }
+
+    // MARK: - Отметка о смене ключа
+
+    /// Отметка живёт в ленте наравне с сообщениями, значит и правила к ней те же:
+    /// `senderId` обязан совпасть с пишущим, иначе Firestore её не примет.
+    func testKeyNoticeIsSignedByWriter() {
+        let notice = members.keyNotice(chat: encryptedGroup(), date: date)
+
+        XCTAssertEqual(notice["senderId"] as? String, "red-uid")
+        XCTAssertEqual(notice["date"] as? Date, date)
+        XCTAssertEqual(notice["type"] as? String, "keyRotated")
+    }
+
+    /// Содержимого у отметки нет вовсе, и шифровать в ней нечего. Появись здесь `enter`
+    /// с флагом `enc`, разбор принял бы её за сообщение и попытался расшифровать пустоту.
+    func testKeyNoticeCarriesNoContent() {
+        let notice = members.keyNotice(chat: encryptedGroup(), date: date)
+
+        XCTAssertNil(notice["message"])
+        XCTAssertNil(notice["enc"])
+        XCTAssertNil(notice["v"])
+    }
+
+    /// Разбор обязан узнать отметку по одному полю `type` и не спутать её с текстом:
+    /// у текстового сообщения этого поля нет вовсе.
+    func testParsedNoticeIsRecognised() {
+        let notice = Message(messageId: "m1", data: ["senderId": "red-uid", "type": "keyRotated"])
+        let text = Message(messageId: "m2", data: ["senderId": "red-uid", "message": "привет"])
+
+        XCTAssertTrue(notice.isKeyNotice)
+        XCTAssertFalse(text.isKeyNotice)
     }
 
     // MARK: - Заготовки

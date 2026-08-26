@@ -124,10 +124,16 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
 
         let remaining = chat.members.filter { $0 != member.id }
 
+        let keys = rotatedKeys(for: remaining)
+
         //MARK: Логин удалённого из карты не вычищаем: он ничему не мешает (название
         // и подписи собираются по составу, а не по карте) и пригодится, если
         // человека вернут обратно.
-        apply(members: remaining, logins: chat.logins, keys: rotatedKeys(for: remaining))
+        //
+        //MARK: Отметка в ленте — только если ключ действительно сменился. У диалога без
+        // шифрования и у группы, где ни одного открытого ключа не нашлось, `rotatedKeys`
+        // возвращает пустоту: менять нечего, и рассказывать не о чем.
+        apply(members: remaining, logins: chat.logins, keys: keys, noteRotation: !keys.isEmpty)
     }
 
     //MARK: Ротация ключа при удалении. Правила закрывают удалённому доступ к диалогу,
@@ -198,12 +204,23 @@ class ChatMembersViewPresenter: ChatMembersViewPresenterProtocol {
         apply(members: members, logins: logins, keys: keys)
     }
 
-    private func apply(members: [String], logins: [String: String], keys: [String: Any]) {
+    private func apply(members: [String],
+                       logins: [String: String],
+                       keys: [String: Any],
+                       noteRotation: Bool = false) {
         chatMembersManager.update(chat: chat, members: members, logins: logins, keys: keys) { [weak self] err in
-            guard let err else { return }
+            guard let self else { return }
+
+            guard let err else {
+                if noteRotation {
+                    self.chatMembersManager.noteKeyRotation(chat: self.chat)
+                }
+
+                return
+            }
 
             DispatchQueue.main.async {
-                self?.view?.showError(err.localizedDescription)
+                self.view?.showError(err.localizedDescription)
             }
         }
     }

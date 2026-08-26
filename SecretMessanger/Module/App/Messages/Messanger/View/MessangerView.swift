@@ -44,6 +44,10 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         return $0
     }(InputBarButtonItem())
 
+    //MARK: Расчёт один на экран, а не новый на каждую отметку: MessageKit спрашивает его
+    // при каждом пересчёте раскладки, а состояния в нём — одна ширина.
+    private let keyNoticeCalculator = KeyNoticeSizeCalculator()
+
     private lazy var micGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleMic(_:)))
 
     //MARK: Скрепка вместо ряда кнопок по одной на каждый вид вложения: их уже два, и
@@ -182,6 +186,9 @@ class MessangerView: MessagesViewController, MessangerViewProtocol {
         messagesCollectionView.messagesDisplayDelegate = self
         messagesCollectionView.messageCellDelegate = self
         messageInputBar.delegate = self
+
+        messagesCollectionView.register(KeyNoticeCell.self,
+                                        forCellWithReuseIdentifier: KeyNoticeCell.reuseIdentifier)
 
         messagesCollectionView.backgroundColor = .bgMain
         view.backgroundColor = .bgMain
@@ -518,9 +525,26 @@ extension MessangerView: MessagesDataSource {
     func numberOfSections(in messagesCollectionView: MessagesCollectionView) -> Int {
         presenter.messages.count
     }
+
+    //MARK: Отметка о смене ключа — не бабл, а разделитель на всю ширину, поэтому она и
+    // приходит сюда: MessageKit отдаёт `.custom` целиком на откуп экрану, вместе с
+    // подписями, аватаром и временем, которых у неё нет.
+    func customCell(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UICollectionViewCell {
+        messagesCollectionView.dequeueReusableCell(withReuseIdentifier: KeyNoticeCell.reuseIdentifier,
+                                                   for: indexPath)
+    }
 }
 
 extension MessangerView: MessagesDisplayDelegate, MessagesLayoutDelegate {
+
+    //MARK: Без своего расчёта MessageKit на `.custom` падает с `fatalError` — размер
+    // такой ячейки он вывести не может и не пытается. Ширину берём у коллекции: у
+    // отметки нет содержимого, из которого её можно было бы получить.
+    func customCellSizeCalculator(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> CellSizeCalculator {
+        keyNoticeCalculator.width = messagesCollectionView.bounds.width
+
+        return keyNoticeCalculator
+    }
 
     //MARK: Имя отправителя нужно только в группе и только над чужими сообщениями:
     // в диалоге на двоих сторона бабла и аватар уже говорят, кто написал, а свои
